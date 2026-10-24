@@ -1,0 +1,160 @@
+// AMS — Smart Attendance Management System
+// Prisma Schema Definition
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+enum SessionStatus {
+  SCHEDULED
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+}
+
+model User {
+  id              String            @id @default(uuid())
+  authUserId      String            @unique
+  email           String            @unique
+  role            Role              @default(STUDENT)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  studentProfile  StudentProfile?
+  facultyProfile  FacultyProfile?
+  createdSessions AttendanceSession[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id                String             @id @default(uuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rollNumber        String             @unique
+  name              String
+  department        String
+  academicYear      String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  enrollments       Enrollment[]
+  attendanceRecords AttendanceRecord[]
+
+  @@index([rollNumber])
+  @@index([department])
+  @@map("student_profiles")
+}
+
+model FacultyProfile {
+  id         String    @id @default(uuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId String    @unique
+  name       String
+  department String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  subjects   Subject[]
+
+  @@index([employeeId])
+  @@index([department])
+  @@map("faculty_profiles")
+}
+
+model Subject {
+  id                 String              @id @default(uuid())
+  code               String              @unique
+  name               String
+  facultyId          String
+  faculty            FacultyProfile      @relation(fields: [facultyId], references: [id], onDelete: Restrict)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  enrollments        Enrollment[]
+  attendanceSessions AttendanceSession[]
+
+  @@index([facultyId])
+  @@index([code])
+  @@map("subjects")
+}
+
+model Enrollment {
+  id         String         @id @default(uuid())
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId  String
+  subject    Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime       @default(now())
+
+  @@unique([studentId, subjectId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@map("enrollments")
+}
+
+model AttendanceSession {
+  id          String             @id @default(uuid())
+  subjectId   String
+  subject     Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  createdById String
+  createdBy   User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  status      SessionStatus      @default(OPEN)
+  startsAt    DateTime           @default(now())
+  endsAt      DateTime?
+  qrTokenHash String?
+  qrExpiresAt DateTime?
+  createdAt   DateTime           @default(now())
+
+  records     AttendanceRecord[]
+
+  @@index([subjectId])
+  @@index([createdById])
+  @@index([status])
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  id        String            @id @default(uuid())
+  sessionId String
+  session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId String
+  student   StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  status    AttendanceStatus  @default(PRESENT)
+  markedAt  DateTime          @default(now())
+  createdAt DateTime          @default(now())
+
+  @@unique([sessionId, studentId])
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([status])
+  @@map("attendance_records")
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
