@@ -22,7 +22,7 @@ export async function GET(request: Request) {
           }
         : undefined,
       include: {
-        user: { select: { email: true } },
+        user: { select: { email: true, isActive: true } },
         subjects: {
           select: {
             id: true,
@@ -76,11 +76,13 @@ export async function POST(request: Request) {
         email: validated.email,
         authUserId,
         role: Role.FACULTY,
+        isActive: true,
         facultyProfile: {
           create: {
             name: validated.name,
             employeeId: validated.employeeId,
             department: validated.department,
+            isActive: true,
           },
         },
       },
@@ -95,5 +97,61 @@ export async function POST(request: Request) {
       ? 400
       : 500;
     return NextResponse.json({ error: error.message || 'Validation failed' }, { status });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    await requireAdmin();
+
+    const body = await request.json();
+    const { id, isActive, name, department, subjectIds } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Faculty ID is required.' }, { status: 400 });
+    }
+
+    const faculty = await prisma.facultyProfile.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!faculty) {
+      return NextResponse.json({ error: 'Faculty record not found.' }, { status: 404 });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (typeof isActive === 'boolean') {
+        await tx.user.update({
+          where: { id: faculty.userId },
+          data: { isActive },
+        });
+      }
+
+      return tx.facultyProfile.update({
+        where: { id },
+        data: {
+          ...(typeof isActive === 'boolean' ? { isActive } : {}),
+          ...(name ? { name } : {}),
+          ...(department ? { department } : {}),
+          ...(Array.isArray(subjectIds)
+            ? {
+                subjects: {
+                  set: subjectIds.map((subId: string) => ({ id: subId })),
+                },
+              }
+            : {}),
+        },
+        include: {
+          user: { select: { email: true, isActive: true } },
+          subjects: { select: { id: true, code: true, name: true } },
+        },
+      });
+    });
+
+    return NextResponse.json({ success: true, faculty: updated });
+  } catch (error: any) {
+    const status = error.message?.includes('FORBIDDEN') ? 403 : 500;
+    return NextResponse.json({ error: error.message || 'Update failed' }, { status });
   }
 }

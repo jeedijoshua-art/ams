@@ -32,6 +32,7 @@ export function Sidebar({ role }: SidebarProps) {
     { label: 'Faculty', href: '/admin/faculty', icon: Users },
     { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
     { label: 'Enrollments', href: '/admin/enrollments', icon: UserPlus },
+    { label: 'Audit Trail', href: '/admin/audit', icon: History },
     { label: 'Threshold & Settings', href: '/admin/settings', icon: Settings },
     { label: 'Reports & Analytics', href: '/reports', icon: BarChart3 },
   ];

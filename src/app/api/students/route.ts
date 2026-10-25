@@ -22,7 +22,7 @@ export async function GET(request: Request) {
           }
         : undefined,
       include: {
-        user: { select: { email: true } },
+        user: { select: { email: true, isActive: true } },
         enrollments: {
           include: {
             subject: { select: { id: true, code: true, name: true } },
@@ -77,12 +77,14 @@ export async function POST(request: Request) {
         email: validated.email,
         authUserId,
         role: Role.STUDENT,
+        isActive: true,
         studentProfile: {
           create: {
             name: validated.name,
             rollNumber: validated.rollNumber,
             department: validated.department,
             academicYear: validated.academicYear,
+            isActive: true,
           },
         },
       },
@@ -97,5 +99,56 @@ export async function POST(request: Request) {
       ? 400
       : 500;
     return NextResponse.json({ error: error.message || 'Validation failed' }, { status });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    await requireAdmin();
+
+    const body = await request.json();
+    const { id, isActive, name, department, academicYear, classSection } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Student ID is required.' }, { status: 400 });
+    }
+
+    const student = await prisma.studentProfile.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!student) {
+      return NextResponse.json({ error: 'Student record not found.' }, { status: 404 });
+    }
+
+    // Update StudentProfile and linked User
+    const updated = await prisma.$transaction(async (tx) => {
+      if (typeof isActive === 'boolean') {
+        await tx.user.update({
+          where: { id: student.userId },
+          data: { isActive },
+        });
+      }
+
+      return tx.studentProfile.update({
+        where: { id },
+        data: {
+          ...(typeof isActive === 'boolean' ? { isActive } : {}),
+          ...(name ? { name } : {}),
+          ...(department ? { department } : {}),
+          ...(academicYear ? { academicYear } : {}),
+          ...(classSection ? { classSection } : {}),
+        },
+        include: {
+          user: { select: { email: true, isActive: true } },
+        },
+      });
+    });
+
+    return NextResponse.json({ success: true, student: updated });
+  } catch (error: any) {
+    const status = error.message?.includes('FORBIDDEN') ? 403 : 500;
+    return NextResponse.json({ error: error.message || 'Update failed' }, { status });
   }
 }

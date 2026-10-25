@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "npx tsx prisma/seed.ts",
+    "admin:bootstrap": "npx tsx prisma/admin-bootstrap.ts",
     "test": "vitest run"
   },
   "prisma": {

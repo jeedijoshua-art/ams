@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 const geistSans = Geist({
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'AMS — Smart Attendance Management System',
   description:
-    'Academic SaaS attendance platform with cryptographic expiring QR tokens, duplicate prevention, and real-time analytics.',
+    'Academic attendance portal with cryptographic expiring QR tokens, duplicate prevention, and real-time analytics.',
 };
 
 export default function RootLayout({
@@ -24,13 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 font-sans">
-        {children}
-      </body>
-    </html>
+    <ClerkProvider dynamic>
+      <html
+        lang="en"
+        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      >
+        <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 font-sans">
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

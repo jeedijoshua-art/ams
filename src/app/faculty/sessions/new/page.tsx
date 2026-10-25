@@ -5,7 +5,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 import { Role } from '@prisma/client';
-import { QrCode, Clock, ShieldCheck, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
+import {
+  QrCode,
+  Clock,
+  ShieldCheck,
+  Loader2,
+  AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  Calendar,
+  Layers,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 
 function NewSessionContent() {
@@ -19,8 +30,14 @@ function NewSessionContent() {
   const [error, setError] = useState<string | null>(null);
 
   const [subjectId, setSubjectId] = useState(initialSubjectId);
+  const [classSection, setClassSection] = useState('CSE-A');
+  const [period, setPeriod] = useState(1);
   const [durationMinutes, setDurationMinutes] = useState(50);
   const [qrExpiryMinutes, setQrExpiryMinutes] = useState(2);
+  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Selected subject details
+  const selectedSubject = subjects.find((s) => s.id === subjectId);
 
   useEffect(() => {
     fetch('/api/subjects')
@@ -56,6 +73,8 @@ function NewSessionContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subjectId,
+          classSection,
+          period: Number(period),
           durationMinutes: Number(durationMinutes),
           qrExpiryMinutes: Number(qrExpiryMinutes),
         }),
@@ -64,7 +83,6 @@ function NewSessionContent() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // Redirect to live session screen
         router.push(`/faculty/sessions/${data.session.id}`);
       } else {
         setError(data.error || 'Failed to create session.');
@@ -80,10 +98,10 @@ function NewSessionContent() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <Navbar />
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 gap-8">
         <Sidebar role={Role.FACULTY} />
 
-        <main className="flex-1 p-6 lg:p-8 max-w-2xl mx-auto w-full space-y-6">
+        <main className="flex-1 min-w-0 max-w-2xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
@@ -91,7 +109,7 @@ function NewSessionContent() {
                 Launch Attendance Session
               </h1>
               <p className="text-xs text-slate-400 mt-1">
-                Generates a cryptographically random expiring QR token and opens the session.
+                Configure your class section, schedule, and rolling cryptographic QR window.
               </p>
             </div>
             <Link
@@ -112,91 +130,165 @@ function NewSessionContent() {
           {loading ? (
             <div className="p-12 text-center text-slate-400">
               <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-400 mb-2" />
-              <p className="text-xs">Loading course subjects...</p>
+              <p className="text-xs">Loading course catalog...</p>
             </div>
           ) : (
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Select Subject */}
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-teal-400" />
+                  Course & Section Allocation
+                </h3>
+
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Course Subject
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Assigned Course Subject
                   </label>
                   <select
                     value={subjectId}
                     onChange={(e) => setSubjectId(e.target.value)}
                     required
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-medium"
                   >
-                    {subjects.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.code} — {sub.name}
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.code} — {s.name} ({s._count?.enrollments || 0} enrolled)
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-teal-400" />
-                      Class Duration
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Class Section / Batch
                     </label>
                     <select
-                      value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500"
+                      value={classSection}
+                      onChange={(e) => setClassSection(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-mono font-bold"
                     >
-                      <option value={30}>30 Minutes</option>
-                      <option value={50}>50 Minutes (Standard)</option>
-                      <option value={90}>90 Minutes</option>
-                      <option value={120}>120 Minutes (Lab)</option>
+                      <option value="CSE-A">CSE-A (Section A)</option>
+                      <option value="CSE-B">CSE-B (Section B)</option>
+                      <option value="CSE-C">CSE-C (Section C)</option>
+                      <option value="AI&DS-A">AI&DS-A</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-                      QR Expiry Window
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Class Period / Hour
+                    </label>
+                    <select
+                      value={period}
+                      onChange={(e) => setPeriod(Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-bold"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((p) => (
+                        <option key={p} value={p}>
+                          Period {p} ({p === 1 ? '08:30 AM' : p === 2 ? '09:30 AM' : p === 3 ? '10:45 AM' : p === 4 ? '11:45 AM' : p === 5 ? '01:30 PM' : p === 6 ? '02:30 PM' : p === 7 ? '03:30 PM' : '04:30 PM'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Session Date
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Roster Preview Card */}
+              {selectedSubject && (
+                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">Eligible Class Roster</p>
+                      <p className="text-[11px] text-slate-400">
+                        {selectedSubject._count?.enrollments || 0} students enrolled in {selectedSubject.code}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-300 text-xs font-mono font-bold">
+                    {selectedSubject._count?.enrollments || 0} Enrolled
+                  </span>
+                </div>
+              )}
+
+              {/* Security & Token Configuration */}
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Anti-Proxy QR Expiry Settings
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      QR Token Validity
                     </label>
                     <select
                       value={qrExpiryMinutes}
                       onChange={(e) => setQrExpiryMinutes(Number(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500"
                     >
-                      <option value={1}>1 Minute (Strict)</option>
+                      <option value={1}>1 Minute (Strict anti-proxy)</option>
                       <option value={2}>2 Minutes (Recommended)</option>
                       <option value={5}>5 Minutes</option>
                       <option value={10}>10 Minutes</option>
                     </select>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Rolling entropy tokens rotate to prevent forwarding.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Total Class Duration
+                    </label>
+                    <select
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500"
+                    >
+                      <option value={50}>50 Minutes (1 Standard Hour)</option>
+                      <option value={100}>100 Minutes (2-Hour Block)</option>
+                      <option value={150}>150 Minutes (Laboratory Practical)</option>
+                    </select>
                   </div>
                 </div>
+              </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
-                  <p className="font-semibold text-slate-300">Security Parameters:</p>
-                  <p>• Only enrolled students can submit check-ins for this subject.</p>
-                  <p>• Duplicate check-in attempts are rejected at the database level.</p>
-                  <p>• You can project the QR code onto the classroom screen and refresh it at any time.</p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating Cryptographic QR Token...
-                    </>
-                  ) : (
-                    <>
-                      Open Session & Display QR Code
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-slate-950 font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-teal-500/20"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating Secure Cryptographic QR...
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="w-4 h-4" />
+                    Confirm Roster & Launch QR Session
+                  </>
+                )}
+              </button>
+            </form>
           )}
         </main>
       </div>
@@ -208,7 +300,7 @@ export default function NewSessionPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
         </div>
       }

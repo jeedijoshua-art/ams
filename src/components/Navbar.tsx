@@ -1,212 +1,218 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { RoleBadge } from './RoleBadge';
 import {
   QrCode,
-  UserCheck,
-  ChevronDown,
   LogOut,
-  Sparkles,
-  Layers,
+  GraduationCap,
+  BookOpen,
+  LayoutDashboard,
   BarChart3,
   ExternalLink,
+  ChevronRight,
+  Menu,
+  X,
 } from 'lucide-react';
-
-interface DevUser {
-  id: string;
-  email: string;
-  role: string;
-  name: string;
-  detail: string;
-}
 
 export function Navbar({ currentUser }: { currentUser?: any }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [users, setUsers] = useState<DevUser[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isSwitching, setIsSwitching] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  useEffect(() => {
-    // Fetch available test accounts for quick persona switching
-    fetch('/api/auth/dev-switch')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.users) {
-          const mapped = data.users.map((u: any) => ({
-            id: u.id,
-            email: u.email,
-            role: u.role,
-            name: u.studentProfile?.name || u.facultyProfile?.name || 'Administrator',
-            detail:
-              u.studentProfile?.rollNumber ||
-              u.facultyProfile?.employeeId ||
-              'System Admin',
-          }));
-          setUsers(mapped);
-        }
-      })
-      .catch((err) => console.error('Failed to load dev users', err));
-  }, []);
-
-  const handleSwitchUser = async (userId: string, role: string) => {
-    setIsSwitching(true);
-    setDropdownOpen(false);
+  const handleSignOut = async () => {
+    setIsLoggingOut(true);
     try {
-      const res = await fetch('/api/auth/dev-switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
-      if (res.ok) {
-        // Redirect to appropriate dashboard based on chosen role
-        let target = '/dashboard';
-        if (role === 'ADMIN') target = '/admin';
-        else if (role === 'FACULTY') target = '/faculty';
-        else if (role === 'STUDENT') target = '/student';
-
-        router.push(target);
-        router.refresh();
+      await fetch('/api/auth/signout', { method: 'POST' });
+      // If Clerk is available on window, sign out of Clerk as well
+      if (typeof window !== 'undefined' && (window as any).Clerk) {
+        await (window as any).Clerk.signOut();
       }
+      router.push('/');
+      router.refresh();
     } catch (err) {
-      console.error(err);
+      console.error('Sign out error:', err);
+      router.push('/');
     } finally {
-      setIsSwitching(false);
+      setIsLoggingOut(false);
     }
   };
 
   const getDashboardLink = () => {
-    if (!currentUser) return '/';
+    if (!currentUser) return '/sign-in';
     if (currentUser.role === 'ADMIN') return '/admin';
     if (currentUser.role === 'FACULTY') return '/faculty';
     return '/student';
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand */}
+        {/* Brand / Logo */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-teal-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
               <QrCode className="w-5 h-5 text-slate-950" />
             </div>
             <div>
-              <span className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                AMS
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">
-                  v1.0
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-black tracking-tight text-white">AMS</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                  Institutional
                 </span>
-              </span>
-              <p className="text-[11px] text-slate-400 font-medium">Smart Attendance Portal</p>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+                Karunya Smart Attendance Portal
+              </p>
             </div>
           </Link>
 
-          {/* Quick Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
-              href={getDashboardLink()}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname.startsWith('/admin') ||
-                pathname.startsWith('/faculty') ||
-                pathname.startsWith('/student')
-                  ? 'bg-slate-800 text-teal-400'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/reports"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname === '/reports'
-                  ? 'bg-slate-800 text-teal-400'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              Analytics
-            </Link>
-          </nav>
+          {/* Navigation Links (when authenticated) */}
+          {currentUser && (
+            <nav className="hidden md:flex items-center gap-1.5 ml-4 pl-4 border-l border-slate-800">
+              <Link
+                href={getDashboardLink()}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  pathname.startsWith('/admin') ||
+                  pathname.startsWith('/faculty') ||
+                  pathname.startsWith('/student')
+                    ? 'bg-slate-800 text-teal-400'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                Dashboard
+              </Link>
+              <Link
+                href="/reports"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  pathname === '/reports'
+                    ? 'bg-slate-800 text-teal-400'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Reports & Analytics
+              </Link>
+            </nav>
+          )}
         </div>
 
-        {/* Right Section: Persona Switcher & Current User */}
-        <div className="flex items-center gap-3">
-          {/* Quick Demo Persona Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 transition-all shadow-sm"
-              title="Switch demo persona (Admin, Faculty, Student)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-              <span className="hidden sm:inline">Demo Persona:</span>
-              <span className="font-bold text-white">
-                {currentUser?.studentProfile?.name ||
-                  currentUser?.facultyProfile?.name ||
-                  (currentUser?.role === 'ADMIN' ? 'Admin' : 'Select')}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-
-            {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl p-2 z-50">
-                <div className="px-3 py-2 border-b border-slate-800 mb-1">
-                  <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                    Instant Persona Switcher
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Test role-based access with seeded accounts
-                  </p>
-                </div>
-
-                <div className="max-h-64 overflow-y-auto space-y-1 py-1">
-                  {users.map((u) => {
-                    const isCurrent = currentUser?.id === u.id;
-                    return (
-                      <button
-                        key={u.id}
-                        disabled={isSwitching}
-                        onClick={() => handleSwitchUser(u.id, u.role)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
-                          isCurrent
-                            ? 'bg-teal-500/15 border border-teal-500/30 text-white'
-                            : 'hover:bg-slate-800/80 text-slate-300'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-200">{u.name}</p>
-                          <p className="text-[10px] text-slate-400">
-                            {u.detail} • {u.email}
-                          </p>
-                        </div>
-                        <RoleBadge role={u.role} className="scale-90" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Current User Pill */}
-          {currentUser && (
-            <div className="hidden lg:flex items-center gap-2.5 pl-3 border-l border-slate-800">
+        {/* Right Section: Auth State or Dual Login Buttons */}
+        <div className="hidden sm:flex items-center gap-3">
+          {currentUser ? (
+            <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-xs font-semibold text-white">
+                <p className="text-xs font-bold text-white">
                   {currentUser.studentProfile?.name ||
                     currentUser.facultyProfile?.name ||
                     'Administrator'}
                 </p>
-                <p className="text-[10px] text-slate-400">{currentUser.email}</p>
+                <p className="text-[10px] text-slate-400">
+                  {currentUser.studentProfile?.rollNumber ||
+                    currentUser.facultyProfile?.employeeId ||
+                    currentUser.email}
+                </p>
               </div>
               <RoleBadge role={currentUser.role} />
+              <button
+                onClick={handleSignOut}
+                disabled={isLoggingOut}
+                className="ml-2 p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 transition-colors"
+                title="Sign out of portal"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/sign-in?role=faculty"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                Faculty Login
+              </Link>
+              <Link
+                href="/sign-in?role=student"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-teal-500/20"
+              >
+                <GraduationCap className="w-4 h-4 text-slate-950" />
+                Student Login (Google)
+              </Link>
             </div>
           )}
         </div>
+
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="sm:hidden p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300"
+        >
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
       </div>
+
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="sm:hidden border-b border-slate-800 bg-slate-950 p-4 space-y-3">
+          {currentUser ? (
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-white">
+                    {currentUser.studentProfile?.name ||
+                      currentUser.facultyProfile?.name ||
+                      'Administrator'}
+                  </p>
+                  <p className="text-[10px] text-slate-400">{currentUser.email}</p>
+                </div>
+                <RoleBadge role={currentUser.role} />
+              </div>
+
+              <Link
+                href={getDashboardLink()}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 text-xs font-semibold text-white"
+              >
+                <span>Dashboard</span>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </Link>
+
+              <button
+                onClick={handleSignOut}
+                disabled={isLoggingOut}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-400"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Link
+                href="/sign-in?role=student"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-teal-500 text-slate-950 font-bold text-xs"
+              >
+                <GraduationCap className="w-4 h-4" />
+                Student Login (Google SSO)
+              </Link>
+              <Link
+                href="/sign-in?role=faculty"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 font-semibold text-xs"
+              >
+                <BookOpen className="w-4 h-4 text-indigo-400" />
+                Faculty Login
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 }

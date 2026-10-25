@@ -24,8 +24,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function StudentDashboardPage() {
   const user = await getCurrentUser();
-  if (!user || user.role !== Role.STUDENT || !user.studentProfile) {
-    redirect('/unauthorized');
+  if (!user) {
+    redirect('/sign-in?role=student');
+  }
+  if (user.role !== Role.STUDENT || !user.studentProfile) {
+    redirect('/unauthorized?reason=unrecognized_student');
   }
 
   const student = user.studentProfile;

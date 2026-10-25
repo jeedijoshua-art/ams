@@ -102,6 +102,8 @@ export async function POST(request: Request) {
         status: SessionStatus.OPEN,
         startsAt: now,
         endsAt,
+        period: validated.period || 1,
+        classSection: validated.classSection || 'CSE-A',
         qrTokenHash: tokenHash,
         qrExpiresAt,
       },

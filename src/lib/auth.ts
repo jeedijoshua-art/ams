@@ -16,9 +16,9 @@ export function isClerkConfigured(): boolean {
 }
 
 /**
- * Returns the currently authenticated user from the database,
- * resolving via Clerk in production (or when configured),
- * or via the dev-authenticated session cookie in development.
+ * Returns the currently authenticated user from the database.
+ * Resolves via Clerk when configured, or via the dev session cookie/header in development.
+ * Never creates arbitrary unapproved student or faculty accounts.
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const clerkEnabled = isClerkConfigured();
@@ -31,7 +31,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         return null;
       }
 
-      // Try finding user by authUserId
+      // 1. Try finding database user linked to this Clerk userId
       let dbUser = await prisma.user.findUnique({
         where: { authUserId: authSession.userId },
         include: {
@@ -40,84 +40,125 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         },
       });
 
-      // If user exists in Clerk but not in DB yet, attempt to synchronize
-      if (!dbUser) {
-        const clerkUser = await clerkCurrentUser();
-        const primaryEmail = clerkUser?.emailAddresses?.[0]?.emailAddress;
-
-        if (primaryEmail) {
-          // Check if an existing profile exists with this email
-          const existingByEmail = await prisma.user.findUnique({
-            where: { email: primaryEmail },
-            include: {
-              studentProfile: true,
-              facultyProfile: true,
-            },
-          });
-
-          if (existingByEmail) {
-            dbUser = await prisma.user.update({
-              where: { id: existingByEmail.id },
-              data: { authUserId: authSession.userId },
-              include: {
-                studentProfile: true,
-                facultyProfile: true,
-              },
-            });
-          }
+      if (dbUser) {
+        if (!dbUser.isActive) {
+          console.warn(`User account ${dbUser.email} is deactivated.`);
+          return null;
         }
+        return dbUser;
       }
 
-      return dbUser;
+      // 2. If not linked yet, match verified email from Clerk against pre-approved DB records
+      const clerkUser = await clerkCurrentUser();
+      const primaryEmail = clerkUser?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+
+      if (!primaryEmail) {
+        return null;
+      }
+
+      // Check if this email matches the configured initial admin
+      const initialAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').toLowerCase();
+      if (initialAdminEmail && primaryEmail === initialAdminEmail) {
+        const adminUser = await prisma.user.upsert({
+          where: { email: primaryEmail },
+          update: {
+            authUserId: authSession.userId,
+            role: Role.ADMIN,
+            isActive: true,
+          },
+          create: {
+            email: primaryEmail,
+            authUserId: authSession.userId,
+            role: Role.ADMIN,
+            isActive: true,
+          },
+          include: {
+            studentProfile: true,
+            facultyProfile: true,
+          },
+        });
+        return adminUser;
+      }
+
+      // Match against pre-registered user in AMS database
+      const existingByEmail = await prisma.user.findUnique({
+        where: { email: primaryEmail },
+        include: {
+          studentProfile: true,
+          facultyProfile: true,
+        },
+      });
+
+      if (existingByEmail) {
+        if (!existingByEmail.isActive) {
+          console.warn(`Pre-registered user ${existingByEmail.email} is marked inactive.`);
+          return null;
+        }
+
+        // Link verified Clerk account with existing approved database profile
+        dbUser = await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: { authUserId: authSession.userId },
+          include: {
+            studentProfile: true,
+            facultyProfile: true,
+          },
+        });
+        return dbUser;
+      }
+
+      // If user signed in to Clerk but has no approved student/faculty profile in AMS DB:
+      // Return null so authorization redirects them to an informative /unauthorized screen.
+      console.warn(`Unregistered account signed in via Clerk: ${primaryEmail}. No matching student/faculty record.`);
+      return null;
     } catch (err) {
       console.error('Error verifying Clerk session:', err);
       return null;
     }
   }
 
-  // Development / Demo Mode Adapter
+  // Development / Test Environment Session Adapter
   if (process.env.NODE_ENV === 'production') {
-    // NEVER enable fake authentication in production
     console.error('CRITICAL: Clerk authentication is not configured in production environment.');
     return null;
   }
 
-  // In development, resolve user from cookie or request header
-  const cookieStore = await cookies();
-  const reqHeaders = await headers();
-  const devUserId =
-    cookieStore.get('ams_dev_user_id')?.value ||
-    reqHeaders.get('x-ams-user-id');
+  // In development/test, resolve user from cookie or request header
+  try {
+    const cookieStore = await cookies();
+    const reqHeaders = await headers();
+    const devUserId =
+      cookieStore.get('ams_dev_user_id')?.value ||
+      reqHeaders.get('x-ams-user-id');
 
-  if (devUserId) {
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ id: devUserId }, { authUserId: devUserId }, { email: devUserId }],
-      },
-      include: {
-        studentProfile: true,
-        facultyProfile: true,
-      },
-    });
-    if (user) return user;
+    if (devUserId) {
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [{ id: devUserId }, { authUserId: devUserId }, { email: devUserId }],
+          isActive: true,
+        },
+        include: {
+          studentProfile: true,
+          facultyProfile: true,
+        },
+      });
+      if (user) return user;
+    }
+  } catch {
+    // Outside active Next.js request context (e.g. unit test runner)
   }
 
-  // Fallback to primary demo student if none chosen
-  const defaultStudent = await prisma.user.findFirst({
-    where: { role: Role.STUDENT },
-    include: {
-      studentProfile: true,
-      facultyProfile: true,
-    },
-  });
-
-  return defaultStudent;
+  // When no session cookie or header is provided, return null (unauthenticated)
+  return null;
 }
 
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) {
     throw new Error('UNAUTHORIZED: You must be signed in to perform this action.');
+  }
+  if (!user.isActive) {
+    throw new Error('FORBIDDEN: Your account has been deactivated. Please contact administration.');
   }
   return user;
 }
@@ -135,8 +176,8 @@ export async function requireFaculty(): Promise<AuthUser & { facultyProfile: Fac
   if (user.role !== Role.FACULTY) {
     throw new Error('FORBIDDEN: Faculty access required.');
   }
-  if (!user.facultyProfile) {
-    throw new Error('FORBIDDEN: No faculty profile associated with this account.');
+  if (!user.facultyProfile || !user.facultyProfile.isActive) {
+    throw new Error('FORBIDDEN: No active faculty profile associated with this account.');
   }
   return user as AuthUser & { facultyProfile: FacultyProfile };
 }
@@ -146,8 +187,8 @@ export async function requireStudent(): Promise<AuthUser & { studentProfile: Stu
   if (user.role !== Role.STUDENT) {
     throw new Error('FORBIDDEN: Student access required.');
   }
-  if (!user.studentProfile) {
-    throw new Error('FORBIDDEN: No student profile associated with this account.');
+  if (!user.studentProfile || !user.studentProfile.isActive) {
+    throw new Error('FORBIDDEN: No active student profile associated with this account.');
   }
   return user as AuthUser & { studentProfile: StudentProfile };
 }

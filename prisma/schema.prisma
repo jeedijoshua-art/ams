@@ -35,12 +35,14 @@ model User {
   authUserId      String            @unique
   email           String            @unique
   role            Role              @default(STUDENT)
+  isActive        Boolean           @default(true)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  studentProfile  StudentProfile?
-  facultyProfile  FacultyProfile?
-  createdSessions AttendanceSession[]
+  studentProfile   StudentProfile?
+  facultyProfile   FacultyProfile?
+  createdSessions  AttendanceSession[]
+  correctionAudits AttendanceCorrectionAudit[]
 
   @@map("users")
 }
@@ -53,6 +55,8 @@ model StudentProfile {
   name              String
   department        String
   academicYear      String
+  classSection      String?            @default("CSE-A")
+  isActive          Boolean            @default(true)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -71,6 +75,7 @@ model FacultyProfile {
   employeeId String    @unique
   name       String
   department String
+  isActive   Boolean   @default(true)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -113,19 +118,21 @@ model Enrollment {
 }
 
 model AttendanceSession {
-  id          String             @id @default(uuid())
-  subjectId   String
-  subject     Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  createdById String
-  createdBy   User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  status      SessionStatus      @default(OPEN)
-  startsAt    DateTime           @default(now())
-  endsAt      DateTime?
-  qrTokenHash String?
-  qrExpiresAt DateTime?
-  createdAt   DateTime           @default(now())
+  id           String             @id @default(uuid())
+  subjectId    String
+  subject      Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  createdById  String
+  createdBy    User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  status       SessionStatus      @default(OPEN)
+  period       Int?               @default(1)
+  classSection String?            @default("CSE-A")
+  startsAt     DateTime           @default(now())
+  endsAt       DateTime?
+  qrTokenHash  String?
+  qrExpiresAt  DateTime?
+  createdAt    DateTime           @default(now())
 
-  records     AttendanceRecord[]
+  records      AttendanceRecord[]
 
   @@index([subjectId])
   @@index([createdById])
@@ -134,20 +141,39 @@ model AttendanceSession {
 }
 
 model AttendanceRecord {
-  id        String            @id @default(uuid())
-  sessionId String
-  session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  studentId String
-  student   StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  status    AttendanceStatus  @default(PRESENT)
-  markedAt  DateTime          @default(now())
-  createdAt DateTime          @default(now())
+  id               String                      @id @default(uuid())
+  sessionId        String
+  session          AttendanceSession           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          StudentProfile              @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  status           AttendanceStatus            @default(PRESENT)
+  markedMethod     String                      @default("QR") // "QR" | "MANUAL"
+  markedAt         DateTime                    @default(now())
+  createdAt        DateTime                    @default(now())
+
+  correctionAudits AttendanceCorrectionAudit[]
 
   @@unique([sessionId, studentId])
   @@index([sessionId])
   @@index([studentId])
   @@index([status])
   @@map("attendance_records")
+}
+
+model AttendanceCorrectionAudit {
+  id             String           @id @default(uuid())
+  recordId       String
+  record         AttendanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  originalStatus AttendanceStatus
+  newStatus      AttendanceStatus
+  changedById    String
+  changedBy      User             @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  reason         String
+  createdAt      DateTime         @default(now())
+
+  @@index([recordId])
+  @@index([changedById])
+  @@map("attendance_correction_audits")
 }
 
 model SystemSetting {
