@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="AMS is a self-hosted academic attendance platform for students, faculty, and administrators." />
+    <meta name="theme-color" content="#101211" />
+    <title>AMS — Attendance Management, Reimagined.</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header" data-header>
+        <a class="brand" href="#top" aria-label="AMS home">
+          <span class="brand-mark">A</span>
+          <span>AMS<span class="brand-dot">.</span></span>
+        </a>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+          <span></span><span></span><span></span><span class="sr-only">Open menu</span>
+        </button>
+        <nav class="site-nav" id="site-nav" aria-label="Primary navigation">
+          <a href="#product">Product</a>
+          <a href="#workflow">How it works</a>
+          <a href="#stack">Stack</a>
+          <a href="#install">Install</a>
+          <a class="nav-cta" href="https://github.com/jeedijoshua-art/ams" target="_blank" rel="noreferrer">View on GitHub <span>↗</span></a>
+        </nav>
+      </header>
+
+      <main id="top">
+        <section class="hero section-grid">
+          <div class="hero-copy reveal">
+            <div class="eyebrow"><span class="status-dot"></span> Open-source academic infrastructure</div>
+            <h1>Attendance<br /><em>reimagined.</em></h1>
+            <p class="hero-lede">A smarter, self-hosted attendance platform for institutions. One calm, centralized workspace for students, faculty, sessions, and academic records — running on your local network.</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#product">Explore features <span>↓</span></a>
+              <a class="button button-quiet" href="https://github.com/jeedijoshua-art/ams/archive/refs/heads/roshan.zip">Download source <span>↗</span></a>
+            </div>
+            <div class="hero-meta"><span>STABLE PROTOTYPE</span><span class="meta-line"></span><span>NEXT.JS 16 · POSTGRESQL</span></div>
+          </div>
+          <div class="hero-visual reveal reveal-delay">
+            <div class="orb orb-one"></div><div class="orb orb-two"></div>
+            <div class="browser-frame">
+              <div class="browser-bar"><div class="browser-lights"><i></i><i></i><i></i></div><span class="browser-address">ams / faculty / sessions</span><span class="browser-live"><b></b> live</span></div>
+              <div class="dashboard-preview">
+                <aside class="preview-sidebar"><div class="mini-logo">A<span>.</span></div><div class="mini-nav active"><span>◈</span> Overview</div><div class="mini-nav"><span>◫</span> Sessions</div><div class="mini-nav"><span>◌</span> Reports</div><div class="mini-nav"><span>⚙</span> Settings</div><div class="sidebar-bottom"><span class="avatar">DR</span><small>Dr. R. Menon<br /><b>Faculty</b></small></div></aside>
+                <div class="preview-main"><div class="preview-top"><div><small>THURSDAY, 30 OCTOBER 2026</small><h3>Good morning, Dr. Menon <span>✦</span></h3></div><div class="preview-bell">◔</div></div>
+                  <div class="preview-stats"><div><small>ACTIVE SESSIONS</small><strong>02</strong><span class="positive">+1 today</span></div><div><small>AVG. ATTENDANCE</small><strong>86.4<sup>%</sup></strong><span class="positive">↑ 4.2% this month</span></div><div><small>COURSES ASSIGNED</small><strong>04</strong><span class="neutral">This semester</span></div></div>
+                  <div class="preview-grid"><div class="chart-card"><div class="card-heading"><span>Attendance overview</span><span class="select-pill">This week⌄</span></div><div class="chart"><div class="chart-y"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div><svg viewBox="0 0 430 140" role="img" aria-label="Illustrative attendance chart"><path class="grid-line" d="M25 15H425M25 43H425M25 71H425M25 99H425M25 127H425"/><path class="chart-fill" d="M25 95C55 85 60 75 90 83S125 40 155 59S195 72 220 49S270 30 290 49S330 35 350 43S390 20 425 26V127H25Z"/><path class="chart-line" d="M25 95C55 85 60 75 90 83S125 40 155 59S195 72 220 49S270 30 290 49S330 35 350 43S390 20 425 26"/></svg><div class="chart-x"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div></div></div>
+                    <div class="session-card"><div class="card-heading"><span>Live session</span><span class="live-tag">● OPEN</span></div><div class="session-course"><b>CS2041</b><strong>Software Engineering</strong><small>Period 02 · CSE-A</small></div><div class="session-progress"><span style="width: 72%"></span></div><div class="session-foot"><span><strong>46</strong> / 64 present</span><a href="#workflow">Open session →</a></div></div></div>
+                </div></div>
+            </div>
+            <div class="floating-note"><span class="note-icon">✓</span><div><b>Session secured</b><small>Rolling QR token active · 01:42</small></div></div>
+          </div>
+        </section>
+
+        <div class="signal-strip"><span>BUILT FOR THE DAILY RHYTHM OF</span><strong>STUDENTS</strong><i></i><strong>FACULTY</strong><i></i><strong>ADMINISTRATORS</strong><i></i><strong>INSTITUTIONS</strong></div>
+
+        <section class="section about-section" id="product">
+          <div class="section-kicker reveal">01 / The case for AMS</div>
+          <div class="split-heading reveal"><h2>Less paperwork.<br /><span>More presence.</span></h2><p>Attendance should be a reliable academic signal — not a daily administrative chore. AMS replaces scattered sheets, static codes, and delayed visibility with one dependable system of record.</p></div>
+          <div class="problem-grid">
+            <article class="problem-card reveal"><span class="card-number">01</span><h3>Manual overhead</h3><p>Roll calls consume class time and leave room for transcription errors, duplicate entries, and missing records.</p><span class="card-arrow">↗</span></article>
+            <article class="problem-card problem-accent reveal reveal-delay"><span class="card-number">02</span><h3>Fragmented records</h3><p>When students, courses, and sessions live in separate spreadsheets, the full attendance picture is always one export away.</p><span class="card-arrow">↗</span></article>
+            <article class="problem-card reveal reveal-delay-2"><span class="card-number">03</span><h3>Delayed visibility</h3><p>Students need timely feedback. Faculty need a live roster. Administrators need institution-wide trends — not end-of-term surprises.</p><span class="card-arrow">↗</span></article>
+          </div>
+        </section>
+
+        <section class="section feature-section">
+          <div class="section-kicker reveal">02 / One system, three perspectives</div>
+          <div class="split-heading reveal"><h2>Every role has<br /><span>its own rhythm.</span></h2><p>Purpose-built workspaces keep the right information close at hand while a shared data model keeps the institution aligned.</p></div>
+          <div class="role-tabs reveal" data-tabs>
+            <div class="tab-list" role="tablist" aria-label="Portal features"><button class="tab active" role="tab" aria-selected="true" aria-controls="student-panel" id="student-tab" data-tab="student">Student portal</button><button class="tab" role="tab" aria-selected="false" aria-controls="faculty-panel" id="faculty-tab" data-tab="faculty">Faculty portal</button><button class="tab" role="tab" aria-selected="false" aria-controls="admin-panel" id="admin-tab" data-tab="admin">Admin portal</button></div>
+            <div class="tab-panel active" id="student-panel" role="tabpanel" aria-labelledby="student-tab" data-panel="student"><div class="panel-copy"><span class="panel-index">01 — STUDENT EXPERIENCE</span><h3>Know where you stand.</h3><p>A focused academic hub for checking courses, scanning active sessions, and understanding attendance before it becomes a problem.</p><ul class="check-list"><li>Student dashboard with subject-wise attendance</li><li>Course registration and enrollment requests</li><li>QR scanner with manual token fallback</li><li>Attendance history and target shortfall calculator</li></ul></div><div class="portal-mock student-mock"><div class="mock-top"><span class="mock-title">My attendance</span><span class="mock-pill">2026 / ODD</span></div><div class="mock-hero-stat"><small>OVERALL ATTENDANCE</small><strong>82<span>%</span></strong><b>On track for threshold</b></div><div class="mock-subject"><span class="subject-icon lime">CS</span><div><b>Software Engineering</b><small>CS2041 · 28 classes</small></div><strong>88%</strong></div><div class="mock-subject"><span class="subject-icon violet">DB</span><div><b>Database Systems</b><small>CS2032 · 26 classes</small></div><strong>76%</strong></div><div class="mock-subject"><span class="subject-icon amber">AI</span><div><b>Artificial Intelligence</b><small>CS3051 · 24 classes</small></div><strong class="warning">68%</strong></div></div></div>
+            <div class="tab-panel" id="faculty-panel" role="tabpanel" aria-labelledby="faculty-tab" data-panel="faculty" hidden><div class="panel-copy"><span class="panel-index">02 — FACULTY EXPERIENCE</span><h3>Make every session count.</h3><p>Create a session, project a rolling QR token, and watch the roster update as students check in from the same network.</p><ul class="check-list"><li>Assigned courses and session creator</li><li>Configurable duration and QR expiry windows</li><li>Live roster with present and absent students</li><li>Reports with RFC 4180 CSV export</li></ul></div><div class="portal-mock faculty-mock"><div class="mock-top"><span class="mock-title">Active session</span><span class="mock-live">● LIVE · 01:42</span></div><div class="qr-display"><div class="qr-art">▦</div><div><small>CS2041 · PERIOD 02</small><b>Software Engineering</b><span>Show this code to your class</span></div></div><div class="roster-stat"><div><small>CHECKED IN</small><strong>46 <span>/ 64</span></strong></div><div class="roster-bar"><span></span></div></div><div class="mock-roster"><span class="avatar-stack"><i>AS</i><i>RK</i><i>+44</i></span><span>Students are checking in</span></div></div></div>
+            <div class="tab-panel" id="admin-panel" role="tabpanel" aria-labelledby="admin-tab" data-panel="admin" hidden><div class="panel-copy"><span class="panel-index">03 — ADMIN EXPERIENCE</span><h3>See the whole institution.</h3><p>Keep people, subjects, enrollments, thresholds, and audit history organized from one control center.</p><ul class="check-list"><li>Student and faculty directories</li><li>Subject management and course enrollment</li><li>Bulk CSV student registration</li><li>Attendance reports, settings, and audit trail</li></ul></div><div class="portal-mock admin-mock"><div class="mock-top"><span class="mock-title">Institution overview</span><span class="mock-pill">All departments⌄</span></div><div class="admin-numbers"><div><small>STUDENTS</small><b>1,248</b><span>↑ 8.4%</span></div><div><small>FACULTY</small><b>86</b><span>Active</span></div><div><small>COMPLIANCE</small><b>91.2%</b><span>↑ 2.1%</span></div></div><div class="admin-table"><div><span>ROLL NUMBER</span><span>NAME</span><span>STATUS</span></div><div><b>URK25CS1101</b><span>Priya Sharma</span><em>On track</em></div><div><b>URK25CS1102</b><span>Rahul Nair</span><em class="table-warn">Below 75%</em></div></div></div></div>
+          </div>
+        </section>
+
+        <section class="section workflow-section" id="workflow">
+          <div class="section-kicker reveal">03 / Designed for the local network</div>
+          <div class="split-heading reveal"><h2>One room.<br /><span>One source of truth.</span></h2><p>AMS is designed for institutions that want a dependable local deployment. The server hosts the application; connected devices use the same Wi-Fi or hotspot to participate.</p></div>
+          <div class="workflow-layout"><div class="steps reveal"><div class="step active"><span>01</span><div><b>Start the server</b><p>The institution launches AMS on a laptop or dedicated host.</p></div></div><div class="step"><span>02</span><div><b>Connect the room</b><p>Students and faculty join the same local Wi-Fi network.</p></div></div><div class="step"><span>03</span><div><b>Open a session</b><p>Faculty creates a class session and projects its rolling QR code.</p></div></div><div class="step"><span>04</span><div><b>Verify and report</b><p>AMS validates tokens, updates records, and makes reports available.</p></div></div></div>
+            <div class="network-card reveal reveal-delay"><div class="network-label">LOCAL NETWORK / LIVE FLOW</div><svg class="network-diagram" viewBox="0 0 620 330" aria-label="AMS local network architecture diagram" role="img"><defs><linearGradient id="limeLine" x1="0" x2="1"><stop stop-color="#C6F36B" stop-opacity=".2"/><stop offset=".5" stop-color="#C6F36B"/><stop offset="1" stop-color="#C6F36B" stop-opacity=".2"/></linearGradient></defs><path class="network-line" d="M310 102V153M310 153H137V205M310 153H310V205M310 153H483V205"/><circle class="pulse-ring" cx="310" cy="80" r="44"/><rect class="network-node server" x="235" y="30" width="150" height="72" rx="12"/><text x="310" y="60">AMS SERVER</text><text x="310" y="80" class="node-sub">local IP :3000</text><rect class="network-node" x="54" y="205" width="166" height="78" rx="12"/><text x="137" y="237">STUDENT DEVICES</text><text x="137" y="257" class="node-sub">scan · history · courses</text><rect class="network-node" x="227" y="205" width="166" height="78" rx="12"/><text x="310" y="237">FACULTY DEVICE</text><text x="310" y="257" class="node-sub">sessions · QR · reports</text><rect class="network-node" x="400" y="205" width="166" height="78" rx="12"/><text x="483" y="237">ADMIN DEVICE</text><text x="483" y="257" class="node-sub">people · settings · audit</text><text x="310" y="180" class="wifi-label">SAME WI-FI / HOTSPOT</text></svg><div class="network-foot"><span><b class="live-dot"></b> private network ready</span><span>no router control required</span></div></div></div>
+        </section>
+
+        <section class="section stack-section" id="stack">
+          <div class="section-kicker reveal">04 / Built with familiar tools</div><div class="split-heading reveal"><h2>Solid under<br /><span>the surface.</span></h2><p>AMS uses a focused, typed web stack that keeps application logic close to the data and makes local deployment straightforward.</p></div>
+          <div class="stack-grid reveal"><div class="stack-card featured"><span class="stack-icon">N</span><div><b>Next.js 16 + React 19</b><p>App Router UI and server-side route handling.</p></div><span class="stack-tag">CORE</span></div><div class="stack-card"><span class="stack-icon prisma">◇</span><div><b>Prisma 6</b><p>Typed access to the relational data model.</p></div></div><div class="stack-card"><span class="stack-icon db">PG</span><div><b>PostgreSQL 16</b><p>Local or Neon cloud database connectivity.</p></div></div><div class="stack-card"><span class="stack-icon ts">TS</span><div><b>TypeScript</b><p>Strict, typed application code.</p></div></div><div class="stack-card"><span class="stack-icon auth">✦</span><div><b>Auth.js + bcrypt</b><p>Session management and credential auth.</p></div></div><div class="stack-card"><span class="stack-icon qr">⌗</span><div><b>QR + Zod</b><p>Ephemeral tokens and input validation.</p></div></div></div>
+          <div class="security-band reveal"><div class="security-lock">⌑</div><div><b>Security is part of the workflow.</b><p>Role-based server authorization, hashed credentials, short-lived QR tokens, database uniqueness constraints, and correction audit records are implemented in the prototype.</p></div><span class="security-label">VERIFIED IN REPOSITORY</span></div>
+        </section>
+
+        <section class="section install-section" id="install">
+          <div class="section-kicker reveal">05 / From clone to classroom</div><div class="split-heading reveal"><h2>Run AMS<br /><span>where you need it.</span></h2><p>Set up the application on a local machine, connect your database, and share the host’s private IP with devices on the same network.</p></div>
+          <div class="install-layout"><div class="code-window reveal"><div class="code-head"><span>QUICK START</span><span>bash</span></div><pre><code><span class="comment"># clone the stable branch</span>
+git clone -b roshan \
+  https://github.com/jeedijoshua-art/ams.git
+cd ams
+
+<span class="comment"># install and configure</span>
+npm install
+cp .env.example .env
+
+<span class="comment"># migrate and seed PostgreSQL</span>
+npx prisma migrate dev --name init
+npm run seed
+npm run admin:bootstrap \
+  -- --email=admin@institution.edu
+
+<span class="comment"># start for local-network access</span>
+npm run dev:lan</code></pre></div>
+            <div class="install-notes reveal reveal-delay"><div class="install-note"><span>01</span><div><b>Prerequisites</b><p>Node.js 20.x or 24.x and PostgreSQL 16, local or Neon.</p></div></div><div class="install-note"><span>02</span><div><b>Environment</b><p>Copy <code>.env.example</code> and provide database and Auth.js values.</p></div></div><div class="install-note"><span>03</span><div><b>Share the room</b><p>Run <code>npm run lan:ip</code>, then open the shown private URL on connected devices.</p></div></div><div class="install-warning"><b>Deployment note</b><p>The showcase is static, but AMS itself needs its configured PostgreSQL/Neon connection and authentication secrets to run.</p></div></div></div>
+        </section>
+
+        <section class="future-section"><div class="section future-inner"><div class="section-kicker reveal">06 / On the horizon</div><div class="future-heading reveal"><h2>Built to grow<br /><span>with the institution.</span></h2><p>These are proposed directions — not current product capabilities.</p></div><div class="future-list reveal"><div><span>01</span><b>Captive portal integration</b><em>PROPOSED</em></div><div><span>02</span><b>Router & RADIUS integration</b><em>PROPOSED</em></div><div><span>03</span><b>Dedicated institution server</b><em>PROPOSED</em></div><div><span>04</span><b>Advanced academic analytics</b><em>PROPOSED</em></div></div></div></section>
+
+        <section class="download-section"><div class="download-glow"></div><div class="download-inner reveal"><div class="download-copy"><div class="eyebrow"><span class="status-dot"></span> Stable branch · roshan</div><h2>Make attendance<br /><em>feel inevitable.</em></h2><p>Explore the source, run it locally, and adapt AMS to the rhythm of your institution.</p></div><div class="download-actions"><a class="button button-primary" href="https://github.com/jeedijoshua-art/ams" target="_blank" rel="noreferrer">View source code <span>↗</span></a><a class="button button-outline" href="https://github.com/jeedijoshua-art/ams/archive/refs/heads/roshan.zip">Download ZIP <span>↓</span></a><small>Source code archive · not a precompiled installer</small></div></div></section>
+      </main>
+
+      <footer class="site-footer"><div class="footer-top"><a class="brand" href="#top"><span class="brand-mark">A</span><span>AMS<span class="brand-dot">.</span></span></a><p>Smart academic attendance<br />for the real world.</p><div class="footer-links"><a href="#product">Product</a><a href="#workflow">Architecture</a><a href="#install">Documentation</a><a href="https://github.com/jeedijoshua-art/ams" target="_blank" rel="noreferrer">GitHub ↗</a></div></div><div class="footer-bottom"><span>© 2026 AMS · Karunya Institute of Technology and Sciences</span><span>Open source product showcase</span></div></footer>
+    </div>
+    <script src="./script.js"></script>
+  </body>
+</html>
