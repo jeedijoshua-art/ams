@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: 'AMS — Smart Attendance Management System',
   description:
     'Academic attendance portal with cryptographic expiring QR tokens, duplicate prevention, and real-time analytics.',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
