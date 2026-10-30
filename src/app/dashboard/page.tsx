@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser, isClerkConfigured } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
+import { auth } from '@/auth';
 import { Role } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -8,23 +9,19 @@ export default async function DashboardRedirectPage() {
   const user = await getCurrentUser();
 
   if (!user) {
-    if (isClerkConfigured()) {
-      try {
-        const { auth } = await import('@clerk/nextjs/server');
-        const session = await auth();
-        if (session?.userId) {
-          // User authenticated with Clerk (e.g. Google), but not enrolled/approved in AMS database!
-          redirect('/unauthorized?reason=unrecognized_student');
-        }
-      } catch (err) {
-        console.error('Error checking clerk session in dashboard redirect:', err);
-      }
+    const session = await auth();
+    console.warn('[AUTH-DIAGNOSTIC] Decision Point 5 Rejection:', {
+      hasAuthSession: Boolean(session?.user),
+      rejectionReasonCode: session?.user ? 'unrecognized_student' : 'no_session',
+    });
+    if (session?.user) {
+      redirect('/unauthorized?reason=unrecognized_student');
     }
     redirect('/sign-in');
   }
 
   if (user.role === Role.ADMIN) {
-    redirect('/admin');
+    redirect('/bosshere');
   } else if (user.role === Role.FACULTY) {
     redirect('/faculty');
   } else {

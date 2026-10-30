@@ -30,19 +30,30 @@ enum AttendanceStatus {
   ABSENT
 }
 
-model User {
-  id              String            @id @default(uuid())
-  authUserId      String            @unique
-  email           String            @unique
-  role            Role              @default(STUDENT)
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+enum EnrollmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
 
-  studentProfile   StudentProfile?
-  facultyProfile   FacultyProfile?
-  createdSessions  AttendanceSession[]
-  correctionAudits AttendanceCorrectionAudit[]
+model User {
+  id               String            @id @default(uuid())
+  authUserId       String            @unique
+  email            String            @unique
+  passwordHash     String?
+  forcePasswordChange Boolean        @default(false)
+  role             Role              @default(STUDENT)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  studentProfile             StudentProfile?
+  facultyProfile             FacultyProfile?
+  createdSessions            AttendanceSession[]
+  correctionAudits           AttendanceCorrectionAudit[]
+  studentImportBatches       StudentImportBatch[]
+  reviewedEnrollmentRequests EnrollmentRequest[]         @relation("EnrollmentRequestReviewer")
 
   @@map("users")
 }
@@ -60,8 +71,9 @@ model StudentProfile {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  enrollments       Enrollment[]
-  attendanceRecords AttendanceRecord[]
+  enrollments        Enrollment[]
+  attendanceRecords  AttendanceRecord[]
+  enrollmentRequests EnrollmentRequest[]
 
   @@index([rollNumber])
   @@index([department])
@@ -97,6 +109,7 @@ model Subject {
 
   enrollments        Enrollment[]
   attendanceSessions AttendanceSession[]
+  enrollmentRequests EnrollmentRequest[]
 
   @@index([facultyId])
   @@index([code])
@@ -115,6 +128,26 @@ model Enrollment {
   @@index([studentId])
   @@index([subjectId])
   @@map("enrollments")
+}
+
+model EnrollmentRequest {
+  id           String                  @id @default(uuid())
+  studentId    String
+  student      StudentProfile          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId    String
+  subject      Subject                 @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  status       EnrollmentRequestStatus @default(PENDING)
+  requestedAt  DateTime                @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?                   @relation("EnrollmentRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNotes  String?
+
+  @@unique([studentId, subjectId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([status])
+  @@map("enrollment_requests")
 }
 
 model AttendanceSession {
@@ -183,4 +216,21 @@ model SystemSetting {
   updatedAt   DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+model StudentImportBatch {
+  id            String   @id @default(uuid())
+  adminId       String
+  admin         User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  filename      String?
+  totalRows     Int
+  createdCount  Int
+  skippedCount  Int
+  rejectedCount Int
+  status        String   @default("SUCCESS") // "SUCCESS" | "PARTIAL" | "FAILED"
+  createdAt     DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("student_import_batches")
 }

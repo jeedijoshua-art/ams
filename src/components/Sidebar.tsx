@@ -27,13 +27,14 @@ export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
 
   const adminLinks = [
-    { label: 'Overview', href: '/admin', icon: LayoutDashboard },
-    { label: 'Students', href: '/admin/students', icon: GraduationCap },
-    { label: 'Faculty', href: '/admin/faculty', icon: Users },
-    { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
-    { label: 'Enrollments', href: '/admin/enrollments', icon: UserPlus },
-    { label: 'Audit Trail', href: '/admin/audit', icon: History },
-    { label: 'Threshold & Settings', href: '/admin/settings', icon: Settings },
+    { label: 'Overview', href: '/bosshere', icon: LayoutDashboard },
+    { label: 'Students', href: '/bosshere/students', icon: GraduationCap },
+    { label: 'Bulk Registration', href: '/bosshere/students/bulk', icon: FileSpreadsheet },
+    { label: 'Faculty', href: '/bosshere/faculty', icon: Users },
+    { label: 'Subjects', href: '/bosshere/subjects', icon: BookOpen },
+    { label: 'Enrollments', href: '/bosshere/enrollments', icon: UserPlus },
+    { label: 'Audit Trail', href: '/bosshere/audit', icon: History },
+    { label: 'Threshold & Settings', href: '/bosshere/settings', icon: Settings },
     { label: 'Reports & Analytics', href: '/reports', icon: BarChart3 },
   ];
 
@@ -47,6 +48,7 @@ export function Sidebar({ role }: SidebarProps) {
 
   const studentLinks = [
     { label: 'My Dashboard', href: '/student', icon: LayoutDashboard },
+    { label: 'Course Registration', href: '/student/courses', icon: BookOpen },
     { label: 'Scan Attendance QR', href: '/student/scan', icon: QrCode },
     { label: 'Attendance History', href: '/student/history', icon: History },
     { label: 'Analytics & Trends', href: '/reports', icon: BarChart3 },
@@ -60,9 +62,9 @@ export function Sidebar({ role }: SidebarProps) {
       : studentLinks;
 
   return (
-    <aside className="w-64 shrink-0 hidden md:block border-r border-slate-800 bg-slate-950 min-h-[calc(100vh-4rem)] p-4">
+    <aside className="w-64 shrink-0 hidden md:block border-r border-[#303831] bg-[#101211] min-h-[calc(100vh-4rem)] p-4">
       <div className="space-y-1">
-        <p className="px-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+        <p className="px-3 text-[11px] font-mono font-semibold text-[#A0A89F] uppercase tracking-wider mb-2">
           {role} Workspace
         </p>
 
@@ -74,15 +76,15 @@ export function Sidebar({ role }: SidebarProps) {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-teal-500/10 text-teal-300 border border-teal-500/20 font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
+                  ? 'bg-[#202622] text-[#C6F36B] border border-[#303831] font-bold shadow-sm'
+                  : 'text-[#A0A89F] hover:text-[#F1F3ED] hover:bg-[#171B18]'
               }`}
             >
               <Icon
                 className={`w-4 h-4 ${
-                  isActive ? 'text-teal-400' : 'text-slate-400 group-hover:text-slate-300'
+                  isActive ? 'text-[#C6F36B]' : 'text-[#A0A89F]'
                 }`}
               />
               {link.label}
@@ -92,12 +94,12 @@ export function Sidebar({ role }: SidebarProps) {
       </div>
 
       {/* Safety Notice Footer */}
-      <div className="mt-8 p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 text-[11px] text-slate-400">
-        <div className="flex items-center gap-1.5 font-semibold text-slate-300 mb-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-          Security Boundary
+      <div className="mt-8 p-3.5 rounded-xl bg-[#171B18] border border-[#303831] text-[11px] text-[#A0A89F] leading-relaxed">
+        <div className="flex items-center gap-1.5 font-bold text-[#F1F3ED] mb-1 font-mono text-[10px]">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#C6F36B]" />
+          SECURITY LEVEL: STRICT
         </div>
-        All attendance calculations and role permissions are strictly validated on the server.
+        Attendance records, tokens, and calculations are strictly validated on the server.
       </div>
     </aside>
   );

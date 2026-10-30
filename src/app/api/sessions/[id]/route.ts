@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser, requireFaculty } from '@/lib/auth';
 import { generateSecureToken, hashToken, generateQrDataUrl } from '@/lib/qr';
-import { Role, SessionStatus } from '@prisma/client';
+import { Role, SessionStatus, AttendanceStatus } from '@prisma/client';
 
 export async function GET(
   request: Request,
@@ -162,19 +162,55 @@ export async function PATCH(
     }
 
     if (action === 'close') {
-      const updated = await prisma.attendanceSession.update({
-        where: { id },
-        data: {
-          status: SessionStatus.CLOSED,
-          endsAt: new Date(),
-          qrTokenHash: null,
-          qrExpiresAt: null,
-        },
+      const updated = await prisma.$transaction(async (tx) => {
+        // 1. Close session and clear QR token
+        const closedSession = await tx.attendanceSession.update({
+          where: { id },
+          data: {
+            status: SessionStatus.CLOSED,
+            endsAt: new Date(),
+            qrTokenHash: null,
+            qrExpiresAt: null,
+          },
+        });
+
+        // 2. Fetch all enrolled students for this subject
+        const enrollments = await tx.enrollment.findMany({
+          where: { subjectId: session.subjectId },
+          select: { studentId: true },
+        });
+
+        // 3. Fetch existing attendance records for this session
+        const existingRecords = await tx.attendanceRecord.findMany({
+          where: { sessionId: id },
+          select: { studentId: true },
+        });
+
+        const markedStudentIds = new Set(existingRecords.map((r) => r.studentId));
+        const absentStudentIds = enrollments
+          .filter((e) => !markedStudentIds.has(e.studentId))
+          .map((e) => e.studentId);
+
+        // 4. Batch create ABSENT records for unmarked students
+        if (absentStudentIds.length > 0) {
+          await tx.attendanceRecord.createMany({
+            data: absentStudentIds.map((studentId) => ({
+              sessionId: id,
+              studentId,
+              status: AttendanceStatus.ABSENT,
+              markedMethod: 'SYSTEM',
+              markedAt: new Date(),
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        return closedSession;
       });
 
       return NextResponse.json({
         success: true,
-        message: 'Attendance session closed.',
+        message: 'Attendance session concluded. Unmarked enrolled students recorded as absent.',
         session: updated,
       });
     }

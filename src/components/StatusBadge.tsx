@@ -1,6 +1,6 @@
 import React from 'react';
 import { AttendanceStatus, SessionStatus } from '@prisma/client';
-import { CheckCircle2, AlertCircle, XCircle, Radio, Clock, Ban } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Ban } from 'lucide-react';
 
 export function AttendanceStatusBadge({
   status,
@@ -14,20 +14,20 @@ export function AttendanceStatusBadge({
     case 'PRESENT':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#72D6A0] border border-[#72D6A0]/30 ${className}`}
         >
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-          Present
+          <CheckCircle2 className="w-3 h-3 text-[#72D6A0]" />
+          PRESENT
         </span>
       );
     case AttendanceStatus.LATE:
     case 'LATE':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#F0BC65] border border-[#F0BC65]/30 ${className}`}
         >
-          <Clock className="w-3.5 h-3.5 text-amber-400" />
-          Late (Attended)
+          <Clock className="w-3 h-3 text-[#F0BC65]" />
+          LATE
         </span>
       );
     case AttendanceStatus.ABSENT:
@@ -35,10 +35,10 @@ export function AttendanceStatusBadge({
     default:
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#FF7777] border border-[#FF7777]/30 ${className}`}
         >
-          <XCircle className="w-3.5 h-3.5 text-rose-400" />
-          Absent
+          <XCircle className="w-3 h-3 text-[#FF7777]" />
+          ABSENT
         </span>
       );
   }
@@ -56,36 +56,36 @@ export function SessionStatusBadge({
     case 'OPEN':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/40 animate-pulse ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#C6F36B] border border-[#C6F36B]/40 ${className}`}
         >
-          <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
-          Live / Open
+          <span className="w-1.5 h-1.5 rounded-full bg-[#C6F36B] animate-ping" />
+          ACTIVE // OPEN
         </span>
       );
     case SessionStatus.CLOSED:
     case 'CLOSED':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-medium bg-[#171B18] text-[#A0A89F] border border-[#303831] ${className}`}
         >
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          Concluded
+          <Clock className="w-3 h-3 text-[#A0A89F]" />
+          CONCLUDED
         </span>
       );
     case SessionStatus.CANCELLED:
     case 'CANCELLED':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-900/30 text-rose-400 border border-rose-700/40 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#FF7777] border border-[#FF7777]/30 ${className}`}
         >
-          <Ban className="w-3.5 h-3.5 text-rose-400" />
-          Cancelled
+          <Ban className="w-3 h-3 text-[#FF7777]" />
+          CANCELLED
         </span>
       );
     default:
       return (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] bg-[#171B18] text-[#A0A89F] border border-[#303831] ${className}`}
         >
           {status}
         </span>

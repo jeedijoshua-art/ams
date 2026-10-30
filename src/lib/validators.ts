@@ -14,6 +14,7 @@ export const CreateFacultySchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   employeeId: z.string().min(3, 'Employee ID is required').toUpperCase(),
   department: z.string().min(2, 'Department is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
 });
 
 export const CreateSubjectSchema = z.object({

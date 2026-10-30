@@ -45,14 +45,16 @@ export function hashToken(token: string): string {
 export async function generateQrDataUrl(payload: string): Promise<string> {
   return QRCode.toDataURL(payload, {
     errorCorrectionLevel: 'M',
-    margin: 2,
-    width: 320,
+    margin: 4,
+    width: 360,
     color: {
-      dark: '#0F172A',
+      dark: '#000000',
       light: '#FFFFFF',
     },
   });
 }
+
+export { parseQrPayload, type ParsedQrPayload } from './qr-payload';
 
 /**
  * Validates check-in attempt and safely marks attendance.
@@ -106,7 +108,26 @@ export async function processAttendanceCheckIn(
       };
     }
 
-    // 4. Verify QR Token
+    // 4. Check for duplicate attendance early
+    const existingRecord = await prisma.attendanceRecord.findUnique({
+      where: {
+        sessionId_studentId: {
+          sessionId: session.id,
+          studentId: studentProfileId,
+        },
+      },
+    });
+
+    if (existingRecord) {
+      return {
+        success: false,
+        message: `Attendance has already been recorded for this session at ${existingRecord.markedAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}.`,
+        errorReason: 'ALREADY_MARKED',
+        record: existingRecord,
+      };
+    }
+
+    // 5. Verify QR Token
     if (!session.qrTokenHash) {
       return {
         success: false,
@@ -124,31 +145,12 @@ export async function processAttendanceCheckIn(
       };
     }
 
-    // 5. Verify Token Expiration
+    // 6. Verify Token Expiration
     if (session.qrExpiresAt && new Date() > session.qrExpiresAt) {
       return {
         success: false,
         message: 'The QR code has expired. Please ask your faculty to refresh the code.',
         errorReason: 'TOKEN_EXPIRED',
-      };
-    }
-
-    // 6. Check for duplicate attendance
-    const existingRecord = await prisma.attendanceRecord.findUnique({
-      where: {
-        sessionId_studentId: {
-          sessionId: session.id,
-          studentId: studentProfileId,
-        },
-      },
-    });
-
-    if (existingRecord) {
-      return {
-        success: false,
-        message: `Attendance has already been recorded for this session at ${existingRecord.markedAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}.`,
-        errorReason: 'ALREADY_MARKED',
-        record: existingRecord,
       };
     }
 

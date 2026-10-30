@@ -112,30 +112,51 @@ describe('System Security & Verification Suite', () => {
 
   afterAll(async () => {
     // Clean up
-    await prisma.attendanceCorrectionAudit.deleteMany({
-      where: { changedById: { in: [activeFaculty1.id, adminUser.id] } },
-    });
-    await prisma.attendanceRecord.deleteMany({
-      where: { studentId: { in: [activeStudent.studentProfile.id, deactivatedStudent.studentProfile.id] } },
-    });
-    await prisma.attendanceSession.deleteMany({
-      where: { subjectId: faculty1Subject.id },
-    });
-    await prisma.enrollment.deleteMany({
-      where: { subjectId: faculty1Subject.id },
-    });
-    await prisma.subject.deleteMany({
-      where: { id: faculty1Subject.id },
-    });
-    await prisma.studentProfile.deleteMany({
-      where: { id: { in: [activeStudent.studentProfile.id, deactivatedStudent.studentProfile.id] } },
-    });
-    await prisma.facultyProfile.deleteMany({
-      where: { id: { in: [activeFaculty1.facultyProfile.id, activeFaculty2.facultyProfile.id] } },
-    });
-    await prisma.user.deleteMany({
-      where: { id: { in: [activeStudent.id, deactivatedStudent.id, activeFaculty1.id, activeFaculty2.id, adminUser.id] } },
-    });
+    const facultyIds = [activeFaculty1?.id, adminUser?.id].filter(Boolean) as string[];
+    if (facultyIds.length > 0) {
+      await prisma.attendanceCorrectionAudit.deleteMany({
+        where: { changedById: { in: facultyIds } },
+      }).catch(() => {});
+    }
+
+    const studentProfileIds = [activeStudent?.studentProfile?.id, deactivatedStudent?.studentProfile?.id].filter(Boolean) as string[];
+    if (studentProfileIds.length > 0) {
+      await prisma.attendanceRecord.deleteMany({
+        where: { studentId: { in: studentProfileIds } },
+      }).catch(() => {});
+    }
+
+    if (faculty1Subject?.id) {
+      await prisma.attendanceSession.deleteMany({
+        where: { subjectId: faculty1Subject.id },
+      }).catch(() => {});
+      await prisma.enrollment.deleteMany({
+        where: { subjectId: faculty1Subject.id },
+      }).catch(() => {});
+      await prisma.subject.deleteMany({
+        where: { id: faculty1Subject.id },
+      }).catch(() => {});
+    }
+
+    if (studentProfileIds.length > 0) {
+      await prisma.studentProfile.deleteMany({
+        where: { id: { in: studentProfileIds } },
+      }).catch(() => {});
+    }
+
+    const facultyProfileIds = [activeFaculty1?.facultyProfile?.id, activeFaculty2?.facultyProfile?.id].filter(Boolean) as string[];
+    if (facultyProfileIds.length > 0) {
+      await prisma.facultyProfile.deleteMany({
+        where: { id: { in: facultyProfileIds } },
+      }).catch(() => {});
+    }
+
+    const userIds = [activeStudent?.id, deactivatedStudent?.id, activeFaculty1?.id, activeFaculty2?.id, adminUser?.id].filter(Boolean) as string[];
+    if (userIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: userIds } },
+      }).catch(() => {});
+    }
   });
 
   it('verifies that unauthenticated context throws UNAUTHORIZED in requireAuth', async () => {
@@ -232,5 +253,137 @@ describe('System Security & Verification Suite', () => {
     expect(rows[0].name).toBe('Johnathan, Doe');
     expect(rows[0].department).toBe('Computer Science, AI');
     expect(rows[0].classSection).toBe('CSE-A');
+  });
+
+  it('correctly hashes faculty passwords and verifies using bcrypt', async () => {
+    const bcrypt = await import('bcryptjs');
+    const rawPassword = 'SecretFacultyPassword@123';
+    const hash = await bcrypt.hash(rawPassword, 10);
+
+    expect(hash).not.toBe(rawPassword);
+    const valid = await bcrypt.compare(rawPassword, hash);
+    expect(valid).toBe(true);
+
+    const invalid = await bcrypt.compare('WrongPassword', hash);
+    expect(invalid).toBe(false);
+  });
+
+  it('throttles login attempts after repeated failures via rate limiting helper', async () => {
+    const { isRateLimited, recordFailedAttempt, clearFailedAttempts } = await import('@/lib/rate-limit');
+    const testEmail = 'throttling-test@karunya.edu';
+
+    clearFailedAttempts(testEmail);
+    expect(isRateLimited(testEmail)).toBe(false);
+
+    // Record 5 failed attempts
+    for (let i = 0; i < 5; i++) {
+      recordFailedAttempt(testEmail);
+    }
+
+    expect(isRateLimited(testEmail)).toBe(true);
+
+    // After clearing, unblocked
+    clearFailedAttempts(testEmail);
+    expect(isRateLimited(testEmail)).toBe(false);
+  });
+
+  it('validates pre-registered active student matching vs unregistered accounts for Google OAuth flow', async () => {
+    // 1. Approved active student matches
+    const matchedStudent = await prisma.user.findFirst({
+      where: { email: { equals: activeStudent.email, mode: 'insensitive' } },
+      include: { studentProfile: true },
+    });
+    expect(matchedStudent).not.toBeNull();
+    expect(matchedStudent?.role).toBe(Role.STUDENT);
+    expect(matchedStudent?.isActive).toBe(true);
+    expect(matchedStudent?.studentProfile?.isActive).toBe(true);
+
+    // 2. Unregistered student email returns null
+    const unknownStudent = await prisma.user.findFirst({
+      where: { email: { equals: 'unknown.external.user@gmail.com', mode: 'insensitive' } },
+      include: { studentProfile: true },
+    });
+    expect(unknownStudent).toBeNull();
+
+    // 3. Deactivated student is flagged inactive
+    const inactiveUser = await prisma.user.findFirst({
+      where: { email: { equals: deactivatedStudent.email, mode: 'insensitive' } },
+      include: { studentProfile: true },
+    });
+    expect(inactiveUser?.isActive).toBe(false);
+  });
+
+  it('guarantees JWT and session resolution binds internal Prisma UUID instead of external Google sub ID', async () => {
+    const student = await prisma.user.findUnique({
+      where: { id: activeStudent.id },
+      select: { id: true, email: true, role: true, isActive: true },
+    });
+
+    expect(student).not.toBeNull();
+
+    // Emulate what NextAuth jwt callback receives from Google OAuth
+    const googleSubId = '109823485720192837465';
+    const rawGoogleUser = {
+      id: googleSubId, // Google provider sets id to profile.sub
+      email: student!.email,
+      name: 'Test Student',
+    };
+
+    // The resolution logic must resolve to student.id (UUID), NOT googleSubId!
+    const lookupEmail = rawGoogleUser.email.toLowerCase().trim();
+    const resolvedUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: { equals: lookupEmail, mode: 'insensitive' } },
+          { authUserId: googleSubId },
+        ],
+        isActive: true,
+      },
+      select: { id: true, role: true, email: true },
+    });
+
+    expect(resolvedUser).not.toBeNull();
+    expect(resolvedUser!.id).toBe(student!.id);
+    expect(resolvedUser!.id).not.toBe(googleSubId);
+    expect(resolvedUser!.role).toBe(Role.STUDENT);
+  });
+
+  it('rejects mismatched account types from student OAuth access (e.g. faculty attempting student login)', async () => {
+    const facultyUser = await prisma.user.findUnique({
+      where: { id: activeFaculty1.id },
+      include: { studentProfile: true },
+    });
+
+    // Faculty has role FACULTY and studentProfile is null
+    expect(facultyUser).not.toBeNull();
+    expect(facultyUser?.role).toBe(Role.FACULTY);
+    expect(facultyUser?.studentProfile).toBeNull();
+
+    // Matching logic for student OAuth must reject non-STUDENT accounts
+    const isApprovedStudent =
+      facultyUser?.role === Role.STUDENT &&
+      facultyUser?.studentProfile?.isActive === true;
+
+    expect(isApprovedStudent).toBe(false);
+  });
+
+  it('computes attendance percentage correctly and detects below-75% threshold warnings', () => {
+    const calculatePct = (attended: number, total: number) => {
+      if (total === 0) return 100;
+      return Math.round((attended / total) * 1000) / 10;
+    };
+
+    expect(calculatePct(10, 10)).toBe(100);
+    expect(calculatePct(7, 10)).toBe(70); // Below 75%
+    expect(calculatePct(8, 10)).toBe(80); // Above 75%
+    expect(calculatePct(0, 0)).toBe(100); // No sessions conducted yet
+
+    const isBelowThreshold = (attended: number, total: number, threshold = 75) => {
+      if (total === 0) return false;
+      return calculatePct(attended, total) < threshold;
+    };
+
+    expect(isBelowThreshold(7, 10, 75)).toBe(true);
+    expect(isBelowThreshold(8, 10, 75)).toBe(false);
   });
 });

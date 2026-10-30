@@ -9,8 +9,6 @@ import { calculateAttendancePercentage } from '@/lib/attendance';
 import {
   FileSpreadsheet,
   Download,
-  BookOpen,
-  Users,
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react';
@@ -110,7 +108,7 @@ export default async function FacultyReportsPage({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#101211] text-[#F1F3ED] flex flex-col">
       <Navbar currentUser={user} />
 
       <div className="flex-1 flex">
@@ -119,29 +117,29 @@ export default async function FacultyReportsPage({
         <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-                <FileSpreadsheet className="w-7 h-7 text-teal-400" />
+              <h1 className="text-2xl sm:text-3xl font-black text-[#F1F3ED] tracking-tight flex items-center gap-2.5">
+                <FileSpreadsheet className="w-7 h-7 text-[#C6F36B]" />
                 Attendance Reports & CSV Export
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-[#A0A89F] mt-1">
                 Official regulatory sheets with student attendance metrics and RFC 4180 export.
               </p>
             </div>
           </div>
 
           {/* Subject Filter Bar */}
-          <div className="flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-slate-900 border border-slate-800">
-            <span className="text-xs font-semibold text-slate-400 ml-2">Select Course:</span>
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-[#171B18] border border-[#303831]">
+            <span className="text-xs font-semibold text-[#A0A89F] ml-2">Select Course:</span>
             {subjects.map((sub) => {
               const isSelected = sub.id === currentSubject?.id;
               return (
                 <a
                   key={sub.id}
                   href={`/faculty/reports?subjectId=${sub.id}`}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     isSelected
-                      ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/20'
-                      : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                      ? 'bg-[#C6F36B] text-[#101211] shadow-md shadow-[#C6F36B]/20'
+                      : 'bg-[#202622] text-[#A0A89F] hover:text-[#F1F3ED] hover:bg-[#303831]'
                   }`}
                 >
                   {sub.code} — {sub.name}
@@ -153,13 +151,13 @@ export default async function FacultyReportsPage({
           {currentSubject && (
             <div className="space-y-6">
               {/* Course Attendance Roster Summary */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-xl">
-                <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="rounded-xl bg-[#171B18] border border-[#303831] overflow-hidden shadow-xl">
+                <div className="p-5 border-b border-[#303831] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-base font-bold text-white">
+                    <h3 className="text-base font-bold text-[#F1F3ED]">
                       {currentSubject.code} Student Attendance Breakdown
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-[#A0A89F] mt-0.5">
                       Total Closed Sessions Evaluated: {conductedSessions.length} • Required Threshold: {threshold}%
                     </p>
                   </div>
@@ -167,7 +165,7 @@ export default async function FacultyReportsPage({
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                    <thead className="bg-[#101211] text-[#A0A89F] uppercase tracking-wider font-semibold border-b border-[#303831]">
                       <tr>
                         <th className="py-3 px-4">Roll Number</th>
                         <th className="py-3 px-4">Student Name</th>
@@ -176,20 +174,20 @@ export default async function FacultyReportsPage({
                         <th className="py-3 px-4 text-right">Standing Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    <tbody className="divide-y divide-[#303831] text-[#A0A89F]">
                       {rosterWithAttendance.map((std) => (
-                        <tr key={std.id} className="hover:bg-slate-800/40">
-                          <td className="py-3.5 px-4 font-mono font-bold text-teal-400">
+                        <tr key={std.id} className="hover:bg-[#202622]/40">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#C6F36B]">
                             {std.rollNumber}
                           </td>
-                          <td className="py-3.5 px-4 font-semibold text-white">{std.name}</td>
+                          <td className="py-3.5 px-4 font-semibold text-[#F1F3ED]">{std.name}</td>
                           <td className="py-3.5 px-4 text-center font-mono font-medium">
                             {std.classesAttended} / {std.classesConducted}
                           </td>
                           <td className="py-3.5 px-4 text-center">
                             <span
                               className={`font-black text-sm ${
-                                std.isDefaulter ? 'text-rose-400' : 'text-emerald-400'
+                                std.isDefaulter ? 'text-[#FF7777]' : 'text-[#72D6A0]'
                               }`}
                             >
                               {std.percentage}%
@@ -197,12 +195,12 @@ export default async function FacultyReportsPage({
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             {std.isDefaulter ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#FF7777]/15 text-[#FF7777] border border-[#FF7777]/30">
                                 <AlertTriangle className="w-3 h-3" />
                                 Defaulter (&lt;{threshold}%)
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#72D6A0]/15 text-[#72D6A0] border border-[#72D6A0]/30">
                                 <CheckCircle2 className="w-3 h-3" />
                                 In Good Standing
                               </span>
@@ -216,11 +214,11 @@ export default async function FacultyReportsPage({
               </div>
 
               {/* Individual Session CSV Exports */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-xl space-y-4">
-                <h3 className="text-base font-bold text-white">
+              <div className="rounded-xl bg-[#171B18] border border-[#303831] p-6 shadow-xl space-y-4">
+                <h3 className="text-base font-bold text-[#F1F3ED]">
                   Export Individual Session Sheets (CSV)
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[#A0A89F]">
                   Download per-session roll call sheets compatible with Excel and institutional databases.
                 </p>
 
@@ -228,10 +226,10 @@ export default async function FacultyReportsPage({
                   {conductedSessions.map((ses) => (
                     <div
                       key={ses.id}
-                      className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between"
+                      className="p-3.5 rounded-xl bg-[#202622] border border-[#303831] flex items-center justify-between"
                     >
                       <div>
-                        <p className="text-xs font-bold text-white">
+                        <p className="text-xs font-bold text-[#F1F3ED]">
                           Session:{' '}
                           {ses.startsAt.toLocaleDateString('en-IN', {
                             day: 'numeric',
@@ -239,7 +237,7 @@ export default async function FacultyReportsPage({
                             year: 'numeric',
                           })}
                         </p>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-[#A0A89F]">
                           {ses.startsAt.toLocaleTimeString('en-IN', {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -251,7 +249,7 @@ export default async function FacultyReportsPage({
                       <a
                         href={`/api/reports/session-csv?sessionId=${ses.id}`}
                         download
-                        className="p-2 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        className="p-2 rounded-lg bg-[#C6F36B]/10 hover:bg-[#C6F36B]/20 text-[#C6F36B] border border-[#C6F36B]/30 text-xs font-semibold flex items-center gap-1 transition-colors"
                       >
                         <Download className="w-3.5 h-3.5" />
                         CSV

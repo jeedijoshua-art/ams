@@ -11,6 +11,28 @@ export interface AttendanceStats {
   classesNeededForThreshold: number;
 }
 
+let cachedThreshold: { value: number; expiresAt: number } | null = null;
+
+export function invalidateAttendanceThresholdCache() {
+  cachedThreshold = null;
+}
+
+export async function getAttendanceThreshold(): Promise<number> {
+  if (cachedThreshold && Date.now() < cachedThreshold.expiresAt) {
+    return cachedThreshold.value;
+  }
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'attendance_threshold' },
+    });
+    const val = parseFloat(setting?.value || '75');
+    cachedThreshold = { value: val, expiresAt: Date.now() + 60000 }; // 60s cache
+    return val;
+  } catch {
+    return 75;
+  }
+}
+
 export function calculateAttendancePercentage(
   attended: number,
   conducted: number
@@ -144,7 +166,7 @@ export async function getStudentOverallAttendance(
     stats: AttendanceStats;
   }>;
 }> {
-  // Get all enrolled subjects
+  // 1. Get all enrolled subjects
   const enrollments = await prisma.enrollment.findMany({
     where: { studentId: studentProfileId },
     include: {
@@ -156,16 +178,95 @@ export async function getStudentOverallAttendance(
     },
   });
 
+  if (enrollments.length === 0) {
+    return {
+      totalConducted: 0,
+      totalAttended: 0,
+      totalAbsent: 0,
+      overallPercentage: 100.0,
+      threshold,
+      isBelowThreshold: false,
+      subjectBreakdown: [],
+    };
+  }
+
+  const subjectIds = enrollments.map((e) => e.subjectId);
+
+  // 2. Batched fetch: all closed sessions across all enrolled subjects in a single roundtrip
+  const closedSessions = await prisma.attendanceSession.findMany({
+    where: {
+      subjectId: { in: subjectIds },
+      status: SessionStatus.CLOSED,
+    },
+    select: { id: true, subjectId: true },
+  });
+
+  const closedSessionIds = closedSessions.map((s) => s.id);
+
+  // 3. Batched fetch: all attendance records across all these sessions in a single roundtrip
+  const records =
+    closedSessionIds.length > 0
+      ? await prisma.attendanceRecord.findMany({
+          where: {
+            studentId: studentProfileId,
+            sessionId: { in: closedSessionIds },
+          },
+          select: { sessionId: true, status: true },
+        })
+      : [];
+
+  // Index sessions by subject
+  const sessionsBySubject = new Map<string, string[]>();
+  for (const s of closedSessions) {
+    const list = sessionsBySubject.get(s.subjectId) || [];
+    list.push(s.id);
+    sessionsBySubject.set(s.subjectId, list);
+  }
+
+  // Index student record statuses by sessionId
+  const recordBySession = new Map<string, AttendanceStatus>();
+  for (const r of records) {
+    recordBySession.set(r.sessionId, r.status);
+  }
+
   let totalConducted = 0;
   let totalAttended = 0;
   let totalAbsent = 0;
   const subjectBreakdown = [];
 
   for (const item of enrollments) {
-    const stats = await getStudentSubjectAttendance(studentProfileId, item.subjectId, threshold);
-    totalConducted += stats.classesConducted;
-    totalAttended += stats.classesAttended;
-    totalAbsent += stats.classesAbsent;
+    const subSessionIds = sessionsBySubject.get(item.subjectId) || [];
+    const classesConducted = subSessionIds.length;
+
+    let attended = 0;
+    let absent = 0;
+
+    for (const sid of subSessionIds) {
+      const status = recordBySession.get(sid);
+      if (status === AttendanceStatus.PRESENT || status === AttendanceStatus.LATE) {
+        attended++;
+      } else {
+        absent++;
+      }
+    }
+
+    const attendancePercentage = calculateAttendancePercentage(attended, classesConducted);
+    const isBelowThreshold = attendancePercentage < threshold;
+    const classesNeededForThreshold = calculateClassesNeeded(attended, classesConducted, threshold);
+
+    const stats: AttendanceStats = {
+      classesConducted,
+      classesAttended: attended,
+      classesAbsent: absent,
+      attendancePercentage,
+      threshold,
+      isBelowThreshold,
+      classesNeededForThreshold,
+    };
+
+    totalConducted += classesConducted;
+    totalAttended += attended;
+    totalAbsent += absent;
 
     subjectBreakdown.push({
       subjectId: item.subject.id,
@@ -184,7 +285,7 @@ export async function getStudentOverallAttendance(
     totalAbsent,
     overallPercentage,
     threshold,
-    isBelowThreshold: overallPercentage < threshold,
+    isBelowThreshold: totalConducted > 0 && overallPercentage < threshold,
     subjectBreakdown,
   };
 }

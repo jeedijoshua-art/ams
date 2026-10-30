@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
@@ -25,6 +25,8 @@ import {
   UserCheck,
   History,
   X,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 export default function FacultySessionViewPage({
@@ -45,6 +47,7 @@ export default function FacultySessionViewPage({
   const [copiedToken, setCopiedToken] = useState(false);
   const [activeTab, setActiveTab] = useState<'attended' | 'absent'>('attended');
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
+  const [projectorMode, setProjectorMode] = useState(false);
 
   // Attendance Correction Modal State
   const [correctionTarget, setCorrectionTarget] = useState<{
@@ -60,7 +63,11 @@ export default function FacultySessionViewPage({
     null
   );
 
+  const isFetchingRef = useRef(false);
+
   const fetchSessionData = async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       const res = await fetch(`/api/sessions/${sessionId}`);
       const json = await res.json();
@@ -80,6 +87,7 @@ export default function FacultySessionViewPage({
     } catch (err) {
       console.error(err);
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
   };
@@ -88,15 +96,26 @@ export default function FacultySessionViewPage({
     fetchSessionData();
   }, [sessionId]);
 
-  // Real-time polling every 3 seconds while session is OPEN
+  // Real-time polling with in-flight guard while session is OPEN
   useEffect(() => {
     if (!data?.session || data.session.status !== 'OPEN') return;
 
-    const interval = setInterval(() => {
-      fetchSessionData();
-    }, 3000);
+    let timeoutId: NodeJS.Timeout;
+    let isActive = true;
 
-    return () => clearInterval(interval);
+    const poll = async () => {
+      await fetchSessionData();
+      if (isActive) {
+        timeoutId = setTimeout(poll, 3000);
+      }
+    };
+
+    timeoutId = setTimeout(poll, 3000);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
   }, [data?.session?.status, sessionId]);
 
   // Second-by-second countdown timer for QR
@@ -244,17 +263,33 @@ export default function FacultySessionViewPage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
+      <div className="min-h-screen bg-[#101211] text-[#F1F3ED] flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 gap-8">
+          <Sidebar role={Role.FACULTY} />
+          <main className="flex-1 min-w-0 space-y-8 animate-pulse">
+            <div className="h-8 bg-[#202622] rounded-lg w-1/3 mb-2" />
+            <div className="h-4 bg-[#202622]/60 rounded w-1/2 mb-6" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="h-28 bg-[#171B18] border border-[#303831] rounded-xl" />
+              <div className="h-28 bg-[#171B18] border border-[#303831] rounded-xl" />
+              <div className="h-28 bg-[#171B18] border border-[#303831] rounded-xl" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-5 h-96 bg-[#171B18] border border-[#303831] rounded-xl" />
+              <div className="lg:col-span-7 h-96 bg-[#171B18] border border-[#303831] rounded-xl" />
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
 
   if (!data?.session) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
+      <div className="min-h-screen bg-[#101211] flex flex-col items-center justify-center text-[#F1F3ED] p-4">
         <p className="text-lg font-bold">Attendance Session Not Found</p>
-        <Link href="/faculty" className="text-xs text-teal-400 mt-2 underline">
+        <Link href="/faculty" className="text-xs text-[#C6F36B] mt-2 underline">
           Return to Dashboard
         </Link>
       </div>
@@ -265,7 +300,7 @@ export default function FacultySessionViewPage({
   const isOpen = session.status === 'OPEN';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#101211] text-[#F1F3ED] flex flex-col">
       <Navbar />
 
       <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 gap-8">
@@ -273,25 +308,25 @@ export default function FacultySessionViewPage({
 
         <main className="flex-1 min-w-0 space-y-6">
           {/* Top Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#303831]">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Link
                   href="/faculty/sessions"
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="text-[#A0A89F] hover:text-[#F1F3ED] transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </Link>
-                <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-slate-800 text-teal-400 border border-slate-700">
+                <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-[#202622] text-[#C6F36B] border border-[#303831]">
                   {session.subject.code}
                 </span>
-                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[#202622] text-[#A0A89F]">
                   {session.classSection || 'CSE-A'} • Period {session.period || 1}
                 </span>
                 <SessionStatusBadge status={session.status} />
               </div>
-              <h1 className="text-2xl font-black text-white">{session.subject.name}</h1>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h1 className="text-2xl font-black text-[#F1F3ED]">{session.subject.name}</h1>
+              <p className="text-xs text-[#A0A89F] mt-0.5">
                 Conducted:{' '}
                 {new Date(session.startsAt).toLocaleDateString('en-IN', {
                   timeZone: 'Asia/Kolkata',
@@ -312,9 +347,9 @@ export default function FacultySessionViewPage({
               <a
                 href={`/api/reports/session-csv?sessionId=${session.id}`}
                 download
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#171B18] border border-[#303831] text-xs font-semibold text-[#A0A89F] hover:bg-[#202622] hover:text-[#F1F3ED] transition-colors shadow-sm"
               >
-                <FileSpreadsheet className="w-4 h-4 text-teal-400" />
+                <FileSpreadsheet className="w-4 h-4 text-[#C6F36B]" />
                 Export CSV Sheet
               </a>
 
@@ -322,7 +357,7 @@ export default function FacultySessionViewPage({
                 <button
                   onClick={handleCloseSession}
                   disabled={closingSession}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 text-xs font-bold transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF7777]/15 border border-[#FF7777]/30 text-[#FF7777] hover:bg-[#FF7777]/25 text-xs font-bold transition-all"
                 >
                   {closingSession ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -340,14 +375,14 @@ export default function FacultySessionViewPage({
             <div
               className={`p-4 rounded-xl flex items-center gap-3 border ${
                 feedback.type === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  ? 'bg-[#72D6A0]/10 border-[#72D6A0]/30 text-[#72D6A0]'
+                  : 'bg-[#FF7777]/10 border-[#FF7777]/30 text-[#FF7777]'
               }`}
             >
               {feedback.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-[#72D6A0] shrink-0" />
               ) : (
-                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                <AlertTriangle className="w-5 h-5 text-[#FF7777] shrink-0" />
               )}
               <span className="text-xs font-medium">{feedback.text}</span>
             </div>
@@ -355,80 +390,109 @@ export default function FacultySessionViewPage({
 
           {/* Real-time Telemetry Stats Banner */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+            <div className="p-4 rounded-xl bg-[#171B18] border border-[#303831] text-center">
+              <span className="text-xs font-semibold text-[#A0A89F] uppercase tracking-wider block">
                 Total Enrolled
               </span>
-              <span className="text-2xl font-black text-white mt-1 block">{enrolledTotal}</span>
+              <span className="text-2xl font-black text-[#F1F3ED] mt-1 block">{enrolledTotal}</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-center">
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider block">
+            <div className="p-4 rounded-xl bg-[#72D6A0]/10 border border-[#72D6A0]/30 text-center">
+              <span className="text-xs font-semibold text-[#72D6A0] uppercase tracking-wider block">
                 Present / Attended
               </span>
-              <span className="text-2xl font-black text-emerald-400 mt-1 block">
+              <span className="text-2xl font-black text-[#72D6A0] mt-1 block">
                 {attendedTotal}
               </span>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center">
-              <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider block">
+            <div className="p-4 rounded-xl bg-[#171B18] border border-[#303831] text-center">
+              <span className="text-xs font-semibold text-[#FF7777] uppercase tracking-wider block">
                 Unmarked / Absent
               </span>
-              <span className="text-2xl font-black text-rose-400 mt-1 block">{absentTotal}</span>
+              <span className="text-2xl font-black text-[#FF7777] mt-1 block">{absentTotal}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column: QR Code Projector */}
             <div className="lg:col-span-5 space-y-4">
-              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl text-center">
+              <div className="p-6 rounded-xl bg-[#171B18] border border-[#303831] shadow-xl text-center">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <QrCode className="w-4 h-4 text-teal-400" />
+                  <h3 className="text-sm font-bold text-[#F1F3ED] flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-[#C6F36B]" />
                     Classroom Projection View
                   </h3>
 
                   {isOpen && (
-                    <button
-                      onClick={handleRefreshQr}
-                      disabled={refreshingQr}
-                      title="Generate new token"
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-1 text-xs"
-                    >
-                      <RotateCw
-                        className={`w-3.5 h-3.5 ${refreshingQr ? 'animate-spin' : ''}`}
-                      />
-                      Refresh
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setProjectorMode(true)}
+                        title="Open Fullscreen Classroom Projector Mode"
+                        className="px-2.5 py-1.5 rounded-lg bg-[#C6F36B]/15 hover:bg-[#C6F36B]/25 border border-[#C6F36B]/30 text-[#C6F36B] text-xs font-semibold transition-colors flex items-center gap-1"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        Projector Mode
+                      </button>
+
+                      <button
+                        onClick={handleRefreshQr}
+                        disabled={refreshingQr}
+                        title="Generate new token"
+                        className="p-1.5 rounded-lg bg-[#202622] hover:bg-[#303831] text-[#A0A89F] hover:text-[#F1F3ED] transition-colors flex items-center gap-1 text-xs"
+                      >
+                        <RotateCw
+                          className={`w-3.5 h-3.5 ${refreshingQr ? 'animate-spin' : ''}`}
+                        />
+                        Refresh
+                      </button>
+                    </div>
                   )}
                 </div>
 
                 {isOpen ? (
                   <div>
                     {qrDataUrl ? (
-                      <div className="relative inline-block p-4 rounded-2xl bg-white shadow-2xl mx-auto my-2">
+                      <div className="relative inline-block p-4 rounded-xl bg-white shadow-2xl mx-auto my-2">
                         <img
                           src={qrDataUrl}
                           alt="Dynamic Attendance QR Code"
                           className="w-64 h-64 mx-auto object-contain"
                         />
+                        {/* Token Expired Overlay */}
+                        {secondsRemaining === 0 && (
+                          <div className="absolute inset-0 bg-[#101211]/85 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center p-4 text-center animate-in fade-in">
+                            <AlertTriangle className="w-8 h-8 text-[#F0BC65] mb-2" />
+                            <p className="text-xs font-bold text-[#F1F3ED]">QR Token Expired</p>
+                            <p className="text-[11px] text-[#A0A89F] mb-3 max-w-[200px]">
+                              Code expired. Refresh to generate a new live token.
+                            </p>
+                            <button
+                              onClick={handleRefreshQr}
+                              disabled={refreshingQr}
+                              className="px-3.5 py-1.5 rounded-lg bg-[#C6F36B] hover:bg-[#D4FF83] active:bg-[#b5e855] text-[#101211] font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-[#C6F36B]/20"
+                            >
+                              <RotateCw className={`w-3.5 h-3.5 ${refreshingQr ? 'animate-spin' : ''}`} />
+                              Regenerate QR
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="w-64 h-64 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center mx-auto my-2">
-                        <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
+                      <div className="w-64 h-64 rounded-xl bg-[#101211] border border-[#303831] flex items-center justify-center mx-auto my-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#C6F36B]" />
                       </div>
                     )}
 
                     {/* Expiration Timer Banner */}
-                    <div className="mt-4 p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center gap-2 text-xs">
-                      <Clock className="w-4 h-4 text-teal-400" />
-                      <span className="text-slate-400">Token validity:</span>
+                    <div className="mt-4 p-3 rounded-xl bg-[#101211] border border-[#303831] flex items-center justify-center gap-2 text-xs">
+                      <Clock className="w-4 h-4 text-[#C6F36B]" />
+                      <span className="text-[#A0A89F]">Token validity:</span>
                       <span
                         className={`font-mono font-bold ${
                           secondsRemaining !== null && secondsRemaining <= 30
-                            ? 'text-rose-400 animate-pulse'
-                            : 'text-teal-400'
+                            ? 'text-[#FF7777] animate-pulse'
+                            : 'text-[#C6F36B]'
                         }`}
                       >
                         {secondsRemaining !== null
@@ -439,15 +503,15 @@ export default function FacultySessionViewPage({
 
                     {/* Token String Fallback */}
                     {qrToken && (
-                      <div className="mt-3 p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                        <span className="text-slate-400 truncate max-w-[200px]">{qrToken}</span>
+                      <div className="mt-3 p-2.5 rounded-xl bg-[#101211]/70 border border-[#303831] flex items-center justify-between text-xs font-mono">
+                        <span className="text-[#A0A89F] truncate max-w-[200px]">{qrToken}</span>
                         <button
                           onClick={copyTokenToClipboard}
-                          className="p-1 text-teal-400 hover:text-teal-300 transition-colors"
+                          className="p-1 text-[#C6F36B] hover:text-[#b5e855] transition-colors"
                           title="Copy Token"
                         >
                           {copiedToken ? (
-                            <Check className="w-4 h-4 text-emerald-400" />
+                            <Check className="w-4 h-4 text-[#72D6A0]" />
                           ) : (
                             <Copy className="w-4 h-4" />
                           )}
@@ -456,12 +520,12 @@ export default function FacultySessionViewPage({
                     )}
                   </div>
                 ) : (
-                  <div className="py-16 text-slate-500">
-                    <Lock className="w-12 h-12 mx-auto text-slate-600 mb-2" />
-                    <p className="text-sm font-semibold text-slate-400">
+                  <div className="py-16 text-[#A0A89F]">
+                    <Lock className="w-12 h-12 mx-auto text-[#303831] mb-2" />
+                    <p className="text-sm font-semibold text-[#A0A89F]">
                       This attendance session is concluded.
                     </p>
-                    <p className="text-xs text-slate-600 mt-1">
+                    <p className="text-xs text-[#A0A89F]/70 mt-1">
                       Attendance records can still be corrected using the audit workflow below.
                     </p>
                   </div>
@@ -471,15 +535,15 @@ export default function FacultySessionViewPage({
 
             {/* Right Column: Live Attendee Roster Tabs with Manual Correction */}
             <div className="lg:col-span-7">
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="rounded-xl bg-[#171B18] border border-[#303831] overflow-hidden shadow-xl">
+                <div className="p-4 border-b border-[#303831] flex items-center justify-between">
                   <div className="flex gap-2">
                     <button
                       onClick={() => setActiveTab('attended')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                         activeTab === 'attended'
-                          ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#C6F36B]/15 text-[#C6F36B] border border-[#C6F36B]/30'
+                          : 'text-[#A0A89F] hover:text-[#F1F3ED]'
                       }`}
                     >
                       Present ({attendedTotal})
@@ -488,8 +552,8 @@ export default function FacultySessionViewPage({
                       onClick={() => setActiveTab('absent')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                         activeTab === 'absent'
-                          ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#FF7777]/15 text-[#FF7777] border border-[#FF7777]/30'
+                          : 'text-[#A0A89F] hover:text-[#F1F3ED]'
                       }`}
                     >
                       Unmarked / Absent ({absentTotal})
@@ -497,8 +561,8 @@ export default function FacultySessionViewPage({
                   </div>
 
                   {isOpen && (
-                    <span className="text-[11px] text-teal-400 flex items-center gap-1.5 font-medium">
-                      <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
+                    <span className="text-[11px] text-[#C6F36B] flex items-center gap-1.5 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-[#C6F36B] animate-ping" />
                       Auto-syncing (3s)
                     </span>
                   )}
@@ -507,12 +571,12 @@ export default function FacultySessionViewPage({
                 <div className="max-h-[460px] overflow-y-auto">
                   {activeTab === 'attended' ? (
                     session.records.length === 0 ? (
-                      <div className="p-12 text-center text-slate-500 text-xs">
+                      <div className="p-12 text-center text-[#737E75] text-xs">
                         No students have checked in yet.
                       </div>
                     ) : (
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 sticky top-0">
+                        <thead className="bg-[#101211] text-[#A0A89F] uppercase tracking-wider font-semibold border-b border-[#303831] sticky top-0">
                           <tr>
                             <th className="py-2.5 px-4">Roll Number</th>
                             <th className="py-2.5 px-4">Student Name</th>
@@ -521,16 +585,16 @@ export default function FacultySessionViewPage({
                             <th className="py-2.5 px-4 text-right">Action</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                        <tbody className="divide-y divide-[#303831] text-[#A0A89F]">
                           {session.records.map((rec: any) => (
-                            <tr key={rec.id} className="hover:bg-slate-800/40">
-                              <td className="py-3 px-4 font-mono font-bold text-teal-400">
+                            <tr key={rec.id} className="hover:bg-[#202622]/40">
+                              <td className="py-3 px-4 font-mono font-bold text-[#C6F36B]">
                                 {rec.student.rollNumber}
                               </td>
-                              <td className="py-3 px-4 font-semibold text-white">
+                              <td className="py-3 px-4 font-semibold text-[#F1F3ED]">
                                 {rec.student.name}
                               </td>
-                              <td className="py-3 px-4 text-slate-400">
+                              <td className="py-3 px-4 text-[#A0A89F]">
                                 <span className="font-mono text-[11px]">
                                   {new Date(rec.markedAt).toLocaleTimeString('en-IN', {
                                     timeZone: 'Asia/Kolkata',
@@ -538,7 +602,7 @@ export default function FacultySessionViewPage({
                                     minute: '2-digit',
                                   })}
                                 </span>
-                                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-[#202622] text-[#A0A89F]">
                                   {rec.markedMethod || 'QR'}
                                 </span>
                               </td>
@@ -555,7 +619,7 @@ export default function FacultySessionViewPage({
                                       rec.status
                                     )
                                   }
-                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-teal-400 transition-colors"
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#A0A89F] hover:text-[#C6F36B] transition-colors"
                                   title="Correct attendance record"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
@@ -568,13 +632,13 @@ export default function FacultySessionViewPage({
                       </table>
                     )
                   ) : absentStudents.length === 0 ? (
-                    <div className="p-12 text-center text-emerald-400 text-xs flex items-center justify-center gap-2">
+                    <div className="p-12 text-center text-[#72D6A0] text-xs flex items-center justify-center gap-2">
                       <CheckCircle2 className="w-4 h-4" />
                       100% Attendance: Every enrolled student has marked attendance!
                     </div>
                   ) : (
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800 sticky top-0">
+                      <thead className="bg-[#101211] text-[#A0A89F] uppercase tracking-wider font-semibold border-b border-[#303831] sticky top-0">
                         <tr>
                           <th className="py-2.5 px-4">Roll Number</th>
                           <th className="py-2.5 px-4">Student Name</th>
@@ -583,14 +647,14 @@ export default function FacultySessionViewPage({
                           <th className="py-2.5 px-4 text-right">Manual Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                      <tbody className="divide-y divide-[#303831] text-[#A0A89F]">
                         {absentStudents.map((std: any) => (
-                          <tr key={std.id} className="hover:bg-slate-800/40">
-                            <td className="py-3 px-4 font-mono font-bold text-slate-400">
+                          <tr key={std.id} className="hover:bg-[#202622]/40">
+                            <td className="py-3 px-4 font-mono font-bold text-[#A0A89F]">
                               {std.rollNumber}
                             </td>
-                            <td className="py-3 px-4 font-semibold text-white">{std.name}</td>
-                            <td className="py-3 px-4 text-slate-500">{std.department}</td>
+                            <td className="py-3 px-4 font-semibold text-[#F1F3ED]">{std.name}</td>
+                            <td className="py-3 px-4 text-[#A0A89F]/70">{std.department}</td>
                             <td className="py-3 px-4 text-center">
                               <AttendanceStatusBadge status="ABSENT" />
                             </td>
@@ -604,7 +668,7 @@ export default function FacultySessionViewPage({
                                     'ABSENT'
                                   )
                                 }
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 text-[11px] font-semibold transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#C6F36B]/10 hover:bg-[#C6F36B]/20 text-[#C6F36B] border border-[#C6F36B]/30 text-[11px] font-semibold transition-colors"
                               >
                                 <UserCheck className="w-3.5 h-3.5" />
                                 Mark Present
@@ -620,40 +684,155 @@ export default function FacultySessionViewPage({
             </div>
           </div>
 
+          {/* Fullscreen Classroom Projector Mode Modal */}
+          {projectorMode && (
+            <div className="fixed inset-0 z-50 bg-[#101211] flex flex-col items-center justify-between p-6 sm:p-10 animate-in fade-in duration-200">
+              {/* Projector Header */}
+              <div className="w-full max-w-4xl flex items-center justify-between border-b border-[#303831] pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold px-3 py-1 rounded-lg bg-[#C6F36B]/15 text-[#C6F36B] border border-[#C6F36B]/30">
+                      {session.subject.code}
+                    </span>
+                    <span className="text-xs text-[#A0A89F] font-semibold">
+                      {session.classSection || 'CSE-A'} • Period {session.period || 1}
+                    </span>
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-black text-[#F1F3ED] mt-1">
+                    {session.subject.name}
+                  </h1>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleRefreshQr}
+                    disabled={refreshingQr}
+                    className="px-4 py-2 rounded-xl bg-[#171B18] hover:bg-[#202622] border border-[#303831] text-[#F1F3ED] text-xs font-semibold flex items-center gap-2 transition-colors"
+                  >
+                    <RotateCw className={`w-4 h-4 ${refreshingQr ? 'animate-spin' : ''}`} />
+                    Refresh QR
+                  </button>
+
+                  <button
+                    onClick={() => setProjectorMode(false)}
+                    className="p-2.5 rounded-xl bg-[#171B18] hover:bg-[#202622] border border-[#303831] text-[#A0A89F] hover:text-[#F1F3ED] transition-colors"
+                    title="Exit Projector Mode"
+                  >
+                    <Minimize2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Central Giant QR Code */}
+              <div className="my-auto flex flex-col items-center text-center">
+                {qrDataUrl ? (
+                  <div className="p-6 sm:p-8 rounded-xl bg-white shadow-2xl relative inline-block">
+                    <img
+                      src={qrDataUrl}
+                      alt="Classroom Attendance QR Code"
+                      className="w-72 h-72 sm:w-96 sm:h-96 md:w-[420px] md:h-[420px] object-contain"
+                    />
+                    {secondsRemaining === 0 && (
+                      <div className="absolute inset-0 bg-[#101211]/90 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-6 text-center">
+                        <AlertTriangle className="w-12 h-12 text-[#F0BC65] mb-3" />
+                        <h2 className="text-xl font-bold text-[#F1F3ED]">QR Token Expired</h2>
+                        <p className="text-xs text-[#A0A89F] mb-4 max-w-xs">
+                          Click below to regenerate a live token for students.
+                        </p>
+                        <button
+                          onClick={handleRefreshQr}
+                          disabled={refreshingQr}
+                          className="px-5 py-2.5 rounded-lg bg-[#C6F36B] hover:bg-[#D4FF83] active:bg-[#b5e855] text-[#101211] font-bold text-sm flex items-center gap-2 shadow-xl shadow-[#C6F36B]/25"
+                        >
+                          <RotateCw className={`w-4 h-4 ${refreshingQr ? 'animate-spin' : ''}`} />
+                          Regenerate Live QR
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-80 h-80 rounded-xl bg-[#171B18] border border-[#303831] flex items-center justify-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-[#C6F36B]" />
+                  </div>
+                )}
+
+                {/* Expiry Countdown & Live Counter */}
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+                  <div className="px-5 py-2.5 rounded-xl bg-[#171B18] border border-[#303831] flex items-center gap-2.5">
+                    <Clock className="w-5 h-5 text-[#C6F36B]" />
+                    <span className="text-xs text-[#A0A89F]">Token validity:</span>
+                    <span
+                      className={`font-mono text-base font-black ${
+                        secondsRemaining !== null && secondsRemaining <= 30
+                          ? 'text-[#FF7777] animate-pulse'
+                          : 'text-[#C6F36B]'
+                      }`}
+                    >
+                      {secondsRemaining !== null
+                        ? `${Math.floor(secondsRemaining / 60)}m ${secondsRemaining % 60}s`
+                        : 'Expired'}
+                    </span>
+                  </div>
+
+                  <div className="px-5 py-2.5 rounded-xl bg-[#72D6A0]/10 border border-[#72D6A0]/30 flex items-center gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-[#72D6A0]" />
+                    <span className="text-xs text-[#72D6A0]">Present:</span>
+                    <span className="font-mono text-base font-black text-[#72D6A0]">
+                      {attendedTotal} / {enrolledTotal}
+                    </span>
+                  </div>
+                </div>
+
+                {qrToken && (
+                  <p className="text-xs font-mono text-[#A0A89F]/70 mt-3">
+                    Token: <span className="text-[#A0A89F]">{qrToken}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Projector Footer Notice */}
+              <div className="w-full max-w-4xl text-center border-t border-[#303831] pt-4">
+                <p className="text-xs text-[#A0A89F]">
+                  Students: Open <span className="text-[#C6F36B] font-mono font-semibold">/student/scan</span> on your mobile device to scan this screen.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Modal: Attendance Correction with Required Audit Reason */}
           {correctionTarget && (
-            <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl">
+            <div className="fixed inset-0 z-50 bg-[#101211]/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-md rounded-xl bg-[#171B18] border border-[#303831] p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <History className="w-5 h-5 text-teal-400" />
+                  <h3 className="text-base font-bold text-[#F1F3ED] flex items-center gap-2">
+                    <History className="w-5 h-5 text-[#C6F36B]" />
                     Attendance Record Adjustment
                   </h3>
                   <button
                     onClick={() => setCorrectionTarget(null)}
-                    className="text-slate-400 hover:text-white"
+                    className="text-[#A0A89F] hover:text-[#F1F3ED]"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 my-3 text-xs">
-                  <p className="font-bold text-white">{correctionTarget.studentName}</p>
-                  <p className="text-[11px] text-slate-400 font-mono">
+                <div className="p-3 rounded-xl bg-[#202622] border border-[#303831] my-3 text-xs">
+                  <p className="font-bold text-[#F1F3ED]">{correctionTarget.studentName}</p>
+                  <p className="text-[11px] text-[#A0A89F] font-mono">
                     Roll: {correctionTarget.rollNumber} • Current Status:{' '}
-                    <span className="font-bold text-teal-400">{correctionTarget.currentStatus}</span>
+                    <span className="font-bold text-[#C6F36B]">{correctionTarget.currentStatus}</span>
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmitCorrection} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                       New Attendance Status
                     </label>
                     <select
                       value={correctionStatus}
                       onChange={(e) => setCorrectionStatus(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-bold"
+                      className="w-full px-3 py-2 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B] font-bold"
                     >
                       <option value="PRESENT">PRESENT (In attendance)</option>
                       <option value="ABSENT">ABSENT (Did not attend)</option>
@@ -663,8 +842,8 @@ export default function FacultySessionViewPage({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Mandatory Correction Reason <span className="text-rose-400">*</span>
+                    <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
+                      Mandatory Correction Reason <span className="text-[#FF7777]">*</span>
                     </label>
                     <textarea
                       rows={3}
@@ -672,9 +851,9 @@ export default function FacultySessionViewPage({
                       placeholder="e.g. Student reported hardware camera defect during live QR scan; verified present in row 3."
                       value={correctionReason}
                       onChange={(e) => setCorrectionReason(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
+                      className="w-full px-3 py-2 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] placeholder-[#A0A89F]/50 focus:outline-none focus:border-[#C6F36B]"
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-[#A0A89F]/70 mt-1">
                       Recorded permanently in university audit trail with your faculty identity.
                     </p>
                   </div>
@@ -683,14 +862,14 @@ export default function FacultySessionViewPage({
                     <button
                       type="button"
                       onClick={() => setCorrectionTarget(null)}
-                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+                      className="px-4 py-2 rounded-xl bg-[#202622] hover:bg-[#303831] text-xs font-semibold text-[#A0A89F]"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={submittingCorrection}
-                      className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-xs font-bold text-slate-950 flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-xl bg-[#C6F36B] hover:bg-[#b5e855] disabled:opacity-50 text-xs font-bold text-[#101211] flex items-center gap-1.5"
                     >
                       {submittingCorrection && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       Log Correction & Save

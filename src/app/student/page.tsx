@@ -8,12 +8,11 @@ import { Sidebar } from '@/components/Sidebar';
 import { AttendanceCard } from '@/components/AttendanceCard';
 import { StatCard } from '@/components/StatCard';
 import { Role, SessionStatus } from '@prisma/client';
-import { getStudentOverallAttendance } from '@/lib/attendance';
+import { getStudentOverallAttendance, getAttendanceThreshold } from '@/lib/attendance';
 import {
   GraduationCap,
   QrCode,
   TrendingUp,
-  AlertTriangle,
   BookOpen,
   CalendarCheck,
   ArrowRight,
@@ -24,20 +23,23 @@ export const dynamic = 'force-dynamic';
 
 export default async function StudentDashboardPage() {
   const user = await getCurrentUser();
+
   if (!user) {
     redirect('/sign-in?role=student');
   }
   if (user.role !== Role.STUDENT || !user.studentProfile) {
+    console.warn('[AUTH-DIAGNOSTIC] Decision Point 6 Rejection:', {
+      role: user?.role,
+      hasStudentProfile: Boolean(user?.studentProfile),
+      rejectionReasonCode: 'unrecognized_student',
+    });
     redirect('/unauthorized?reason=unrecognized_student');
   }
 
   const student = user.studentProfile;
 
-  // 1. Fetch system threshold
-  const setting = await prisma.systemSetting.findUnique({
-    where: { key: 'attendance_threshold' },
-  });
-  const threshold = parseFloat(setting?.value || '75');
+  // 1. Fetch system threshold (cached in memory)
+  const threshold = await getAttendanceThreshold();
 
   // 2. Fetch student's overall & subject-wise attendance using our calculation engine
   const attendanceData = await getStudentOverallAttendance(student.id, threshold);
@@ -62,7 +64,7 @@ export default async function StudentDashboardPage() {
   const pendingActiveSessions = activeSessions.filter((s) => s.records.length === 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#101211] text-[#F1F3ED] flex flex-col">
       <Navbar currentUser={user} />
 
       <div className="flex-1 flex">
@@ -72,21 +74,21 @@ export default async function StudentDashboardPage() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-                <GraduationCap className="w-7 h-7 text-indigo-400" />
+              <h1 className="text-2xl sm:text-3xl font-black text-[#F1F3ED] tracking-tight flex items-center gap-2.5">
+                <GraduationCap className="w-7 h-7 text-[#C6F36B]" />
                 Student Academic Hub
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-[#A0A89F] mt-1">
                 Student:{' '}
-                <span className="font-semibold text-white">{student.name}</span> • Roll:{' '}
-                <span className="font-mono text-teal-400 font-bold">{student.rollNumber}</span> •{' '}
+                <span className="font-semibold text-[#F1F3ED]">{student.name}</span> • Roll:{' '}
+                <span className="font-mono text-[#C6F36B] font-bold">{student.rollNumber}</span> •{' '}
                 {student.department} ({student.academicYear})
               </p>
             </div>
 
             <Link
               href="/student/scan"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-all shadow-lg shadow-teal-500/20"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C6F36B] hover:bg-[#b5e855] text-[#101211] text-xs font-bold transition-all shadow-lg shadow-[#C6F36B]/20"
             >
               <QrCode className="w-4 h-4" />
               Scan Attendance QR
@@ -95,17 +97,17 @@ export default async function StudentDashboardPage() {
 
           {/* Pending Active Attendance Check-In Alert */}
           {pendingActiveSessions.length > 0 && (
-            <div className="p-5 rounded-2xl bg-teal-950/40 border border-teal-500/40 shadow-xl relative overflow-hidden">
+            <div className="p-5 rounded-xl bg-[#C6F36B]/10 border border-[#C6F36B]/40 shadow-xl relative overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
-                  <span className="w-3 h-3 rounded-full bg-teal-400 animate-ping mt-1" />
+                  <span className="w-3 h-3 rounded-full bg-[#C6F36B] animate-ping mt-1" />
                   <div>
-                    <h3 className="text-sm font-bold text-white">
+                    <h3 className="text-sm font-bold text-[#F1F3ED]">
                       Live Attendance Session Active Now!
                     </h3>
-                    <p className="text-xs text-teal-300 mt-0.5">
+                    <p className="text-xs text-[#A0A89F] mt-0.5">
                       Your class for{' '}
-                      <span className="font-bold text-white">
+                      <span className="font-bold text-[#F1F3ED]">
                         {pendingActiveSessions[0].subject.code} (
                         {pendingActiveSessions[0].subject.name})
                       </span>{' '}
@@ -116,7 +118,7 @@ export default async function StudentDashboardPage() {
 
                 <Link
                   href={`/student/scan?sessionId=${pendingActiveSessions[0].id}`}
-                  className="px-4 py-2 rounded-xl bg-teal-500 text-slate-950 font-bold text-xs hover:bg-teal-400 transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20"
+                  className="px-4 py-2 rounded-xl bg-[#C6F36B] text-[#101211] font-bold text-xs hover:bg-[#b5e855] transition-all flex items-center gap-1.5 shadow-md shadow-[#C6F36B]/20"
                 >
                   Mark Attendance Now
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -127,15 +129,15 @@ export default async function StudentDashboardPage() {
 
           {/* Overall Threshold Warning Banner if Below 75% */}
           {attendanceData.isBelowThreshold && (
-            <div className="p-5 rounded-2xl bg-rose-950/30 border border-rose-500/30 flex items-start gap-3.5">
-              <ShieldAlert className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-5 rounded-xl bg-[#FF7777]/10 border border-[#FF7777]/30 flex items-start gap-3.5">
+              <ShieldAlert className="w-6 h-6 text-[#FF7777] shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-sm font-bold text-rose-200">
+                <h3 className="text-sm font-bold text-[#F1F3ED]">
                   Attendance Shortfall Warning — Below Regulatory {threshold}%
                 </h3>
-                <p className="text-xs text-rose-300/90 mt-1 max-w-3xl">
+                <p className="text-xs text-[#FF7777] mt-1 max-w-3xl">
                   Your aggregate attendance is currently{' '}
-                  <span className="font-black text-rose-200">
+                  <span className="font-black text-[#F1F3ED]">
                     {attendanceData.overallPercentage}%
                   </span>
                   . Under institutional regulations, you may be debarred from semester examinations
@@ -150,24 +152,42 @@ export default async function StudentDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <StatCard
               title="Aggregate Attendance"
-              value={`${attendanceData.overallPercentage}%`}
-              subtitle={`Regulatory Threshold: ${threshold}%`}
+              value={attendanceData.totalConducted === 0 ? '100%' : `${attendanceData.overallPercentage}%`}
+              subtitle={
+                attendanceData.totalConducted === 0
+                  ? '0 attended / 0 eligible classes (In Good Standing)'
+                  : `Regulatory Threshold: ${threshold}%`
+              }
               icon={TrendingUp}
-              color={attendanceData.overallPercentage >= threshold ? 'emerald' : 'rose'}
+              color={
+                attendanceData.totalConducted === 0
+                  ? 'success'
+                  : attendanceData.overallPercentage >= threshold
+                  ? 'success'
+                  : 'error'
+              }
             />
             <StatCard
               title="Classes Attended"
-              value={`${attendanceData.totalAttended} / ${attendanceData.totalConducted}`}
-              subtitle="Closed Sessions Evaluated"
+              value={
+                attendanceData.totalConducted === 0
+                  ? '0 / 0'
+                  : `${attendanceData.totalAttended} / ${attendanceData.totalConducted}`
+              }
+              subtitle={
+                attendanceData.totalConducted === 0
+                  ? 'No classes conducted yet'
+                  : 'Closed Sessions Evaluated'
+              }
               icon={CalendarCheck}
-              color="teal"
+              color="lime"
             />
             <StatCard
               title="Enrolled Subjects"
               value={attendanceData.subjectBreakdown.length}
               subtitle="Curriculum Load"
               icon={BookOpen}
-              color="indigo"
+              color="lime"
             />
           </div>
 
@@ -175,29 +195,59 @@ export default async function StudentDashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-bold text-white">Subject-Wise Attendance</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-base font-bold text-[#F1F3ED]">Subject-Wise Attendance</h2>
+                <p className="text-xs text-[#A0A89F]">
                   Real-time percentage calculations and classes required to meet the {threshold}% target
                 </p>
               </div>
-              <Link
-                href="/student/history"
-                className="text-xs font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-1"
-              >
-                Detailed Session Logs <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/student/courses"
+                  className="text-xs font-semibold text-[#A0A89F] hover:text-[#F1F3ED] flex items-center gap-1"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-[#C6F36B]" />
+                  Course Registration
+                </Link>
+                <Link
+                  href="/student/history"
+                  className="text-xs font-semibold text-[#C6F36B] hover:text-[#b5e855] flex items-center gap-1"
+                >
+                  Detailed Session Logs <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {attendanceData.subjectBreakdown.map((item) => (
-                <AttendanceCard
-                  key={item.subjectId}
-                  code={item.code}
-                  name={item.name}
-                  facultyName={item.facultyName}
-                  stats={item.stats}
-                />
-              ))}
+              {attendanceData.subjectBreakdown.length === 0 ? (
+                <div className="col-span-full p-10 text-center rounded-xl bg-[#171B18] border border-[#303831] space-y-4 shadow-xl">
+                  <div className="w-14 h-14 mx-auto rounded-xl bg-[#C6F36B]/10 border border-[#C6F36B]/30 flex items-center justify-center text-[#C6F36B]">
+                    <BookOpen className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[#F1F3ED]">No Course Enrollments Yet</h3>
+                    <p className="text-xs text-[#A0A89F] max-w-md mx-auto mt-1">
+                      You are not enrolled in any academic courses. Browse institutional offerings and submit an enrollment request to begin attending sessions.
+                    </p>
+                  </div>
+                  <Link
+                    href="/student/courses"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C6F36B] hover:bg-[#b5e855] text-[#101211] font-bold text-xs transition-all shadow-lg shadow-[#C6F36B]/20"
+                  >
+                    Browse & Register Courses
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                attendanceData.subjectBreakdown.map((item) => (
+                  <AttendanceCard
+                    key={item.subjectId}
+                    code={item.code}
+                    name={item.name}
+                    facultyName={item.facultyName}
+                    stats={item.stats}
+                  />
+                ))
+              )}
             </div>
           </div>
         </main>

@@ -1,10 +1,17 @@
 /**
  * Utility to convert an array of objects into RFC 4180 compliant CSV string.
+ * Includes sanitization against CSV formula injection (DDE attacks).
  */
 export function generateCsv(headers: string[], rows: (string | number | boolean | null | undefined)[][]): string {
   const escapeCell = (cell: string | number | boolean | null | undefined): string => {
     if (cell === null || cell === undefined) return '';
-    const str = String(cell);
+    let str = String(cell);
+
+    // Prevent CSV formula execution in spreadsheet applications (=, +, -, @, tab, cr)
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = `'${str}`;
+    }
+
     if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
       return `"${str.replace(/"/g, '""')}"`;
     }
@@ -15,6 +22,24 @@ export function generateCsv(headers: string[], rows: (string | number | boolean 
   const bodyRows = rows.map((row) => row.map(escapeCell).join(',')).join('\n');
 
   return `${headerRow}\n${bodyRows}`;
+}
+
+/**
+ * Standard CSV Template for Bulk Student Registration from Google Forms / Sheets
+ * Columns strictly aligned with institutional schema:
+ * Roll Number, Student Name, Institutional Email, Department, Academic Year
+ * (Class/Section assignment is decoupled and handled via Academic Offerings)
+ */
+export function generateStudentRegistrationTemplateCsv(): string {
+  const headers = [
+    'Roll Number',
+    'Student Name',
+    'Institutional Email',
+    'Department',
+    'Academic Year',
+  ];
+
+  return generateCsv(headers, []);
 }
 
 export interface AttendanceCsvRow {
@@ -77,7 +102,7 @@ export function parseCsv(csvText: string): { headers: string[]; rows: Record<str
   let currentField = '';
   let insideQuotes = false;
 
-  const cleaned = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const cleaned = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   for (let i = 0; i < cleaned.length; i++) {
     const char = cleaned[i];

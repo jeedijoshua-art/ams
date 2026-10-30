@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { requireAdmin, requireAuth } from '@/lib/auth';
 import { CreateStudentSchema } from '@/lib/validators';
 import { Role } from '@prisma/client';
+import { invalidateUserSessionCache } from '@/auth';
 
 export async function GET(request: Request) {
   try {
@@ -11,31 +12,84 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search')?.toLowerCase() || '';
 
-    const students = await prisma.studentProfile.findMany({
-      where: search
-        ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { rollNumber: { contains: search, mode: 'insensitive' } },
-              { department: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
-      include: {
-        user: { select: { email: true, isActive: true } },
-        enrollments: {
-          include: {
-            subject: { select: { id: true, code: true, name: true } },
+    const [setting, students] = await Promise.all([
+      prisma.systemSetting.findUnique({
+        where: { key: 'attendance_threshold' },
+      }),
+      prisma.studentProfile.findMany({
+        where: search
+          ? {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { rollNumber: { contains: search, mode: 'insensitive' } },
+                { department: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : undefined,
+        include: {
+          user: { select: { email: true, isActive: true } },
+          enrollments: {
+            include: {
+              subject: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                  attendanceSessions: {
+                    where: { status: 'CLOSED' },
+                    select: { id: true },
+                  },
+                },
+              },
+            },
+          },
+          attendanceRecords: {
+            where: {
+              status: { in: ['PRESENT', 'LATE'] },
+              session: { status: 'CLOSED' },
+            },
+            select: { id: true },
           },
         },
-        _count: {
-          select: { attendanceRecords: true, enrollments: true },
-        },
-      },
-      orderBy: { rollNumber: 'asc' },
+        orderBy: { rollNumber: 'asc' },
+      }),
+    ]);
+
+    const threshold = parseFloat(setting?.value || '75');
+
+    const enrichedStudents = students.map((std) => {
+      let totalConducted = 0;
+      for (const enr of std.enrollments) {
+        totalConducted += enr.subject.attendanceSessions.length;
+      }
+      const totalAttended = std.attendanceRecords.length;
+      const attendancePercentage =
+        totalConducted > 0
+          ? Math.round((totalAttended / totalConducted) * 1000) / 10
+          : 100.0;
+
+      return {
+        id: std.id,
+        userId: std.userId,
+        rollNumber: std.rollNumber,
+        name: std.name,
+        department: std.department,
+        academicYear: std.academicYear,
+        isActive: std.isActive,
+        user: std.user,
+        enrollments: std.enrollments.map((e) => ({
+          id: e.subject.id,
+          code: e.subject.code,
+          name: e.subject.name,
+        })),
+        totalConducted,
+        totalAttended,
+        attendancePercentage,
+        isBelowThreshold: attendancePercentage < threshold && totalConducted > 0,
+      };
     });
 
-    return NextResponse.json({ students });
+    return NextResponse.json({ students: enrichedStudents, threshold });
   } catch (error: any) {
     const status = error.message?.includes('UNAUTHORIZED') ? 401 : 500;
     return NextResponse.json({ error: error.message }, { status });
@@ -107,7 +161,7 @@ export async function PATCH(request: Request) {
     await requireAdmin();
 
     const body = await request.json();
-    const { id, isActive, name, department, academicYear, classSection } = body;
+    const { id, isActive, name, department, academicYear, classSection, email } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Student ID is required.' }, { status: 400 });
@@ -124,10 +178,28 @@ export async function PATCH(request: Request) {
 
     // Update StudentProfile and linked User
     const updated = await prisma.$transaction(async (tx) => {
+      const userUpdates: any = {};
       if (typeof isActive === 'boolean') {
+        userUpdates.isActive = isActive;
+      }
+      if (email && typeof email === 'string') {
+        const normalizedEmail = email.toLowerCase().trim();
+        const existing = await tx.user.findFirst({
+          where: {
+            email: { equals: normalizedEmail, mode: 'insensitive' },
+            id: { not: student.userId },
+          },
+        });
+        if (existing) {
+          throw new Error('A user with this email address already exists.');
+        }
+        userUpdates.email = normalizedEmail;
+      }
+
+      if (Object.keys(userUpdates).length > 0) {
         await tx.user.update({
           where: { id: student.userId },
-          data: { isActive },
+          data: userUpdates,
         });
       }
 
@@ -145,6 +217,8 @@ export async function PATCH(request: Request) {
         },
       });
     });
+
+    invalidateUserSessionCache(student.userId);
 
     return NextResponse.json({ success: true, student: updated });
   } catch (error: any) {

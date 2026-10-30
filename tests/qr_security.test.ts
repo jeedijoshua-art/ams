@@ -88,32 +88,44 @@ describe('QR Attendance Security & Check-In Lifecycle', () => {
   });
 
   afterAll(async () => {
-    // Cleanup test records
-    await prisma.attendanceRecord.deleteMany({
-      where: {
-        studentId: { in: [testStudentProfile.id, testUnenrolledStudent.id] },
-      },
-    });
-    await prisma.attendanceSession.deleteMany({
-      where: { subjectId: testSubject.id },
-    });
-    await prisma.enrollment.deleteMany({
-      where: { subjectId: testSubject.id },
-    });
-    await prisma.subject.deleteMany({
-      where: { id: testSubject.id },
-    });
-    await prisma.studentProfile.deleteMany({
-      where: { id: { in: [testStudentProfile.id, testUnenrolledStudent.id] } },
-    });
-    await prisma.facultyProfile.deleteMany({
-      where: { id: testFacultyUser.facultyProfile.id },
-    });
-    await prisma.user.deleteMany({
-      where: {
-        id: { in: [testStudentUser.id, testUnenrolledStudent.userId, testFacultyUser.id] },
-      },
-    });
+    // Cleanup test records safely
+    const studentProfileIds = [testStudentProfile?.id, testUnenrolledStudent?.id].filter(Boolean) as string[];
+    if (studentProfileIds.length > 0) {
+      await prisma.attendanceRecord.deleteMany({
+        where: { studentId: { in: studentProfileIds } },
+      }).catch(() => {});
+    }
+
+    if (testSubject?.id) {
+      await prisma.attendanceSession.deleteMany({
+        where: { subjectId: testSubject.id },
+      }).catch(() => {});
+      await prisma.enrollment.deleteMany({
+        where: { subjectId: testSubject.id },
+      }).catch(() => {});
+      await prisma.subject.deleteMany({
+        where: { id: testSubject.id },
+      }).catch(() => {});
+    }
+
+    if (studentProfileIds.length > 0) {
+      await prisma.studentProfile.deleteMany({
+        where: { id: { in: studentProfileIds } },
+      }).catch(() => {});
+    }
+
+    if (testFacultyUser?.facultyProfile?.id) {
+      await prisma.facultyProfile.deleteMany({
+        where: { id: testFacultyUser.facultyProfile.id },
+      }).catch(() => {});
+    }
+
+    const userIds = [testStudentUser?.id, testUnenrolledStudent?.userId, testFacultyUser?.id].filter(Boolean) as string[];
+    if (userIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: userIds } },
+      }).catch(() => {});
+    }
   });
 
   it('generates unique cryptographic random tokens and consistent SHA-256 hashes', () => {

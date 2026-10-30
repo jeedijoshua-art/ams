@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin, requireAuth } from '@/lib/auth';
 import { CreateSubjectSchema } from '@/lib/validators';
+import { Role } from '@prisma/client';
 
 export async function GET(request: Request) {
   try {
-    await requireAuth();
+    const user = await requireAuth();
 
     const { searchParams } = new URL(request.url);
-    const facultyId = searchParams.get('facultyId');
+    let facultyId = searchParams.get('facultyId');
+
+    // Faculty members are scoped strictly to their assigned subjects
+    if (user.role === Role.FACULTY && user.facultyProfile) {
+      facultyId = user.facultyProfile.id;
+    }
 
     const subjects = await prisma.subject.findMany({
       where: facultyId ? { facultyId } : undefined,

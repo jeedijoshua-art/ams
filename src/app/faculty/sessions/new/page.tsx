@@ -7,17 +7,14 @@ import { Sidebar } from '@/components/Sidebar';
 import { Role } from '@prisma/client';
 import {
   QrCode,
-  Clock,
   ShieldCheck,
   Loader2,
   AlertTriangle,
-  ArrowRight,
   BookOpen,
-  Calendar,
-  Layers,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
+import { AmsLoader } from '@/components/AmsLoader';
 
 function NewSessionContent() {
   const router = useRouter();
@@ -95,7 +92,7 @@ function NewSessionContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#101211] text-[#F1F3ED] flex flex-col">
       <Navbar />
 
       <div className="flex-1 flex max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 gap-8">
@@ -104,52 +101,52 @@ function NewSessionContent() {
         <main className="flex-1 min-w-0 max-w-2xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-                <QrCode className="w-6 h-6 text-teal-400" />
+              <h1 className="text-2xl font-black text-[#F1F3ED] tracking-tight flex items-center gap-2.5">
+                <QrCode className="w-6 h-6 text-[#C6F36B]" />
                 Launch Attendance Session
               </h1>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-[#A0A89F] mt-1">
                 Configure your class section, schedule, and rolling cryptographic QR window.
               </p>
             </div>
             <Link
               href="/faculty"
-              className="text-xs font-semibold text-slate-400 hover:text-white"
+              className="text-xs font-semibold text-[#A0A89F] hover:text-[#F1F3ED]"
             >
               Cancel
             </Link>
           </div>
 
           {error && (
-            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2.5 text-xs">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-4 rounded-xl bg-[#FF7777]/10 border border-[#FF7777]/30 text-[#FF7777] flex items-center gap-2.5 text-xs">
+              <AlertTriangle className="w-4 h-4 text-[#FF7777] shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {loading ? (
-            <div className="p-12 text-center text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-400 mb-2" />
+            <div className="p-12 text-center text-[#A0A89F]">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C6F36B] mb-2" />
               <p className="text-xs">Loading course catalog...</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Select Subject */}
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-teal-400" />
+              <div className="p-5 rounded-xl bg-[#171B18] border border-[#303831] space-y-4">
+                <h3 className="text-sm font-bold text-[#F1F3ED] flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[#C6F36B]" />
                   Course & Section Allocation
                 </h3>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                     Assigned Course Subject
                   </label>
                   <select
                     value={subjectId}
                     onChange={(e) => setSubjectId(e.target.value)}
                     required
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B] font-medium"
                   >
                     {subjects.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -161,13 +158,13 @@ function NewSessionContent() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                       Class Section / Batch
                     </label>
                     <select
                       value={classSection}
                       onChange={(e) => setClassSection(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-mono font-bold"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B] font-mono font-bold"
                     >
                       <option value="CSE-A">CSE-A (Section A)</option>
                       <option value="CSE-B">CSE-B (Section B)</option>
@@ -177,13 +174,13 @@ function NewSessionContent() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                       Class Period / Hour
                     </label>
                     <select
                       value={period}
                       onChange={(e) => setPeriod(Number(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-bold"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B] font-bold"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8].map((p) => (
                         <option key={p} value={p}>
@@ -195,73 +192,73 @@ function NewSessionContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                     Session Date
                   </label>
                   <input
                     type="date"
                     value={scheduledDate}
                     onChange={(e) => setScheduledDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500 font-mono"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B] font-mono"
                   />
                 </div>
               </div>
 
               {/* Roster Preview Card */}
               {selectedSubject && (
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-[#171B18] border border-[#303831] flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                    <div className="w-10 h-10 rounded-xl bg-[#C6F36B]/10 border border-[#C6F36B]/20 flex items-center justify-center text-[#C6F36B]">
                       <Users className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-white">Eligible Class Roster</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-xs font-bold text-[#F1F3ED]">Eligible Class Roster</p>
+                      <p className="text-[11px] text-[#A0A89F]">
                         {selectedSubject._count?.enrollments || 0} students enrolled in {selectedSubject.code}
                       </p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-300 text-xs font-mono font-bold">
+                  <span className="px-2.5 py-1 rounded-full bg-[#C6F36B]/15 text-[#C6F36B] text-xs font-mono font-bold">
                     {selectedSubject._count?.enrollments || 0} Enrolled
                   </span>
                 </div>
               )}
 
               {/* Security & Token Configuration */}
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <div className="p-5 rounded-xl bg-[#171B18] border border-[#303831] space-y-4">
+                <h3 className="text-sm font-bold text-[#F1F3ED] flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#72D6A0]" />
                   Anti-Proxy QR Expiry Settings
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                       QR Token Validity
                     </label>
                     <select
                       value={qrExpiryMinutes}
                       onChange={(e) => setQrExpiryMinutes(Number(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B]"
                     >
                       <option value={1}>1 Minute (Strict anti-proxy)</option>
                       <option value={2}>2 Minutes (Recommended)</option>
                       <option value={5}>5 Minutes</option>
                       <option value={10}>10 Minutes</option>
                     </select>
-                    <p className="text-[10px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-[#A0A89F]/70 mt-1">
                       Rolling entropy tokens rotate to prevent forwarding.
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#A0A89F] mb-1.5">
                       Total Class Duration
                     </label>
                     <select
                       value={durationMinutes}
                       onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B]"
                     >
                       <option value={50}>50 Minutes (1 Standard Hour)</option>
                       <option value={100}>100 Minutes (2-Hour Block)</option>
@@ -274,11 +271,11 @@ function NewSessionContent() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-slate-950 font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-teal-500/20"
+                className="w-full py-3.5 rounded-xl bg-[#C6F36B] hover:bg-[#b5e855] disabled:opacity-50 text-[#101211] font-black text-sm flex items-center justify-center gap-2 transition-all shadow-xl shadow-[#C6F36B]/20"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-[#101211]" />
                     Generating Secure Cryptographic QR...
                   </>
                 ) : (
@@ -298,13 +295,7 @@ function NewSessionContent() {
 
 export default function NewSessionPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
-        </div>
-      }
-    >
+    <Suspense fallback={<AmsLoader fullScreen label="Preparing session configuration..." />}>
       <NewSessionContent />
     </Suspense>
   );

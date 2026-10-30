@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin, getCurrentUser } from '@/lib/auth';
 import { UpdateThresholdSchema } from '@/lib/validators';
+import { invalidateAttendanceThresholdCache } from '@/lib/attendance';
 
 export async function GET() {
   try {
@@ -37,6 +38,8 @@ export async function PATCH(request: Request) {
         description: 'Attendance percentage threshold',
       },
     });
+
+    invalidateAttendanceThresholdCache();
 
     return NextResponse.json({
       success: true,

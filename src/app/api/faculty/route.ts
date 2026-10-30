@@ -3,6 +3,9 @@ import prisma from '@/lib/prisma';
 import { requireAdmin, requireAuth } from '@/lib/auth';
 import { CreateFacultySchema } from '@/lib/validators';
 import { Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { invalidateUserSessionCache } from '@/auth';
 
 export async function GET(request: Request) {
   try {
@@ -22,7 +25,7 @@ export async function GET(request: Request) {
           }
         : undefined,
       include: {
-        user: { select: { email: true, isActive: true } },
+        user: { select: { email: true, isActive: true, forcePasswordChange: true } },
         subjects: {
           select: {
             id: true,
@@ -69,6 +72,9 @@ export async function POST(request: Request) {
       );
     }
 
+    const generatedPassword = crypto.randomBytes(8).toString('base64url');
+    const rawPassword = validated.password?.trim() || generatedPassword;
+    const passwordHash = await bcrypt.hash(rawPassword, 10);
     const authUserId = `auth_fac_${validated.employeeId.toLowerCase()}_${Date.now()}`;
 
     const newUser = await prisma.user.create({
@@ -77,6 +83,8 @@ export async function POST(request: Request) {
         authUserId,
         role: Role.FACULTY,
         isActive: true,
+        passwordHash,
+        forcePasswordChange: !validated.password,
         facultyProfile: {
           create: {
             name: validated.name,
@@ -89,7 +97,14 @@ export async function POST(request: Request) {
       include: { facultyProfile: true },
     });
 
-    return NextResponse.json({ success: true, faculty: newUser.facultyProfile }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        faculty: newUser.facultyProfile,
+        temporaryPassword: !validated.password ? rawPassword : null,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     const status = error.message?.includes('FORBIDDEN')
       ? 403
@@ -105,7 +120,7 @@ export async function PATCH(request: Request) {
     await requireAdmin();
 
     const body = await request.json();
-    const { id, isActive, name, department, subjectIds } = body;
+    const { id, isActive, name, department, subjectIds, newPassword, resetPassword } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Faculty ID is required.' }, { status: 400 });
@@ -120,11 +135,27 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Faculty record not found.' }, { status: 404 });
     }
 
+    let finalPassword: string | null = null;
+    if (newPassword && typeof newPassword === 'string' && newPassword.trim().length >= 6) {
+      finalPassword = newPassword.trim();
+    } else if (resetPassword === true) {
+      finalPassword = crypto.randomBytes(8).toString('base64url');
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
+      const userUpdates: any = {};
       if (typeof isActive === 'boolean') {
+        userUpdates.isActive = isActive;
+      }
+      if (finalPassword) {
+        userUpdates.passwordHash = await bcrypt.hash(finalPassword, 10);
+        userUpdates.forcePasswordChange = true;
+      }
+
+      if (Object.keys(userUpdates).length > 0) {
         await tx.user.update({
           where: { id: faculty.userId },
-          data: { isActive },
+          data: userUpdates,
         });
       }
 
@@ -143,15 +174,21 @@ export async function PATCH(request: Request) {
             : {}),
         },
         include: {
-          user: { select: { email: true, isActive: true } },
-          subjects: { select: { id: true, code: true, name: true } },
+          user: { select: { email: true, isActive: true, forcePasswordChange: true } },
+          subjects: true,
         },
       });
     });
 
-    return NextResponse.json({ success: true, faculty: updated });
+    invalidateUserSessionCache(faculty.userId);
+
+    return NextResponse.json({
+      success: true,
+      faculty: updated,
+      temporaryPassword: finalPassword,
+    });
   } catch (error: any) {
     const status = error.message?.includes('FORBIDDEN') ? 403 : 500;
-    return NextResponse.json({ error: error.message || 'Update failed' }, { status });
+    return NextResponse.json({ error: error.message }, { status });
   }
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { Navbar } from '@/components/Navbar';
@@ -11,6 +11,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function ReportsAnalyticsPage() {
   const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect('/sign-in');
+  }
+  if (currentUser.role === Role.STUDENT) {
+    redirect('/unauthorized?reason=faculty_or_admin_required');
+  }
 
   // 1. Fetch threshold
   const setting = await prisma.systemSetting.findUnique({
@@ -116,7 +122,7 @@ export default async function ReportsAnalyticsPage() {
   defaultersList.sort((a, b) => a.percentage - b.percentage);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#101211] text-[#F1F3ED] flex flex-col">
       <Navbar currentUser={currentUser} />
 
       <div className="flex-1 flex">
@@ -124,86 +130,92 @@ export default async function ReportsAnalyticsPage() {
 
         <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <BarChart3 className="w-7 h-7 text-teal-400" />
+            <h1 className="text-2xl sm:text-3xl font-black text-[#F1F3ED] tracking-tight flex items-center gap-2.5">
+              <BarChart3 className="w-7 h-7 text-[#C6F36B]" />
               Institutional Analytics & Telemetry
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-[#A0A89F] mt-1">
               Cross-course attendance distributions, compliance tracking, and defaulter audits.
             </p>
           </div>
 
           {/* Subject Comparison Section */}
-          <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-xl space-y-6">
+          <div className="rounded-xl bg-[#171B18] border border-[#303831] p-6 shadow-xl space-y-6">
             <div>
-              <h2 className="text-base font-bold text-white">Course-Wise Attendance Compliance</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h2 className="text-base font-bold text-[#F1F3ED]">Course-Wise Attendance Compliance</h2>
+              <p className="text-xs text-[#A0A89F] mt-0.5">
                 Calculated across all closed sessions and enrolled student rosters. Benchmark threshold:{' '}
-                <span className="font-bold text-teal-400">{threshold}%</span>
+                <span className="font-bold text-[#C6F36B]">{threshold}%</span>
               </p>
             </div>
 
             <div className="space-y-4">
-              {subjectAnalytics.map((sub) => {
-                const isBelow = sub.avgPct < threshold;
-                return (
-                  <div key={sub.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-mono font-bold text-teal-400 mr-2">{sub.code}</span>
-                        <span className="font-semibold text-white">{sub.name}</span>
-                        <span className="text-slate-500 ml-2">({sub.facultyName})</span>
+              {subjectAnalytics.length === 0 ? (
+                <div className="p-8 text-center text-[#737E75] text-xs">
+                  No courses or attendance sessions available in database.
+                </div>
+              ) : (
+                subjectAnalytics.map((sub) => {
+                  const isBelow = sub.avgPct < threshold;
+                  return (
+                    <div key={sub.id} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-mono font-bold text-[#C6F36B] mr-2">{sub.code}</span>
+                          <span className="font-semibold text-[#F1F3ED]">{sub.name}</span>
+                          <span className="text-[#A0A89F] ml-2">({sub.facultyName})</span>
+                        </div>
+                        <span
+                          className={`font-mono font-bold text-sm ${
+                            isBelow ? 'text-[#FF7777]' : 'text-[#72D6A0]'
+                          }`}
+                        >
+                          {sub.avgPct}%
+                        </span>
                       </div>
-                      <span
-                        className={`font-mono font-bold text-sm ${
-                          isBelow ? 'text-rose-400' : 'text-emerald-400'
-                        }`}
-                      >
-                        {sub.avgPct}%
-                      </span>
-                    </div>
 
-                    <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          isBelow
-                            ? 'bg-rose-500'
-                            : 'bg-gradient-to-r from-teal-500 to-emerald-400'
-                        }`}
-                        style={{ width: `${Math.min(100, sub.avgPct)}%` }}
-                      />
+                      <div className="w-full h-2.5 rounded-full bg-[#202622] overflow-hidden border border-[#303831]">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${
+                            isBelow
+                              ? 'bg-[#FF7777]'
+                              : 'bg-[#72D6A0]'
+                          }`}
+                          style={{ width: `${Math.min(100, sub.avgPct)}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
           {/* High-Risk Defaulters Section */}
-          <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-xl">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+          <div className="rounded-xl bg-[#171B18] border border-[#303831] overflow-hidden shadow-xl">
+            <div className="p-5 border-b border-[#303831] flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <h3 className="text-base font-bold text-[#F1F3ED] flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#FF7777]" />
                   Academic Defaulter Watchlist (&lt;{threshold}%)
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[#A0A89F] mt-0.5">
                   Students failing to maintain the statutory minimum attendance threshold
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#FF7777]/15 text-[#FF7777] border border-[#FF7777]/30">
                 {defaultersList.length} At-Risk Students
               </span>
             </div>
 
             {defaultersList.length === 0 ? (
-              <div className="p-12 text-center text-emerald-400 text-xs">
+              <div className="p-12 text-center text-[#72D6A0] text-xs">
                 Zero students below threshold. Full academic compliance achieved!
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                  <thead className="bg-[#202622] text-[#A0A89F] uppercase tracking-wider font-semibold border-b border-[#303831]">
                     <tr>
                       <th className="py-3 px-4">Roll Number</th>
                       <th className="py-3 px-4">Student Name</th>
@@ -213,21 +225,21 @@ export default async function ReportsAnalyticsPage() {
                       <th className="py-3 px-4 text-right">Shortfall Deficit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tbody className="divide-y divide-[#303831] text-[#A0A89F]">
                     {defaultersList.map((d) => (
-                      <tr key={d.rollNumber} className="hover:bg-slate-800/40">
-                        <td className="py-3.5 px-4 font-mono font-bold text-rose-400">
+                      <tr key={d.rollNumber} className="hover:bg-[#202622]/40 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#FF7777]">
                           {d.rollNumber}
                         </td>
-                        <td className="py-3.5 px-4 font-semibold text-white">{d.name}</td>
-                        <td className="py-3.5 px-4 text-slate-400">{d.department}</td>
-                        <td className="py-3.5 px-4 text-center font-mono">
+                        <td className="py-3.5 px-4 font-semibold text-[#F1F3ED]">{d.name}</td>
+                        <td className="py-3.5 px-4 text-[#A0A89F]">{d.department}</td>
+                        <td className="py-3.5 px-4 text-center font-mono text-[#F1F3ED]">
                           {d.attended} / {d.conducted}
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          <span className="font-black text-rose-400 text-sm">{d.percentage}%</span>
+                          <span className="font-black text-[#FF7777] text-sm">{d.percentage}%</span>
                         </td>
-                        <td className="py-3.5 px-4 text-right text-rose-300 font-semibold">
+                        <td className="py-3.5 px-4 text-right text-[#FF7777] font-semibold">
                           -{d.deficit}% below target
                         </td>
                       </tr>

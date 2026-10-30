@@ -3,7 +3,7 @@
 > Developed for Software Engineering Course (ODD Semester 2026), Karunya Institute of Technology and Sciences.
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-emerald?style=flat-square)](.)
-[![Tests](https://img.shields.io/badge/Vitest-17%2F17%20Passed-emerald?style=flat-square)](.)
+[![Tests](https://img.shields.io/badge/Vitest-116%2F116%20Passed-emerald?style=flat-square)](.)
 [![Type Safety](https://img.shields.io/badge/TypeScript-Strict%20Mode-blue?style=flat-square)](.)
 [![Database](https://img.shields.io/badge/PostgreSQL-16%20%7C%20Prisma%20ORM-indigo?style=flat-square)](.)
 [![Next.js](https://img.shields.io/badge/Next.js-16.4%20App%20Router-black?style=flat-square)](.)
@@ -48,8 +48,8 @@ AMS is an enterprise-grade academic attendance portal that addresses the vulnera
 - **ORM & Database:** Prisma 6.19, PostgreSQL 16 (Local & Neon Cloud Database).
 - **Input Validation:** Zod schemas.
 - **QR Engine:** `qrcode` (SVG/DataURL generator), `html5-qrcode` (camera stream reader).
-- **Authentication:** Dual-Mode (Clerk in production; Dev Persona Switcher in local dev).
-- **Testing:** Vitest 5.0.5 (17 automated unit and integration tests).
+- **Authentication:** Auth.js (NextAuth v5) — Direct Google OAuth for Students; Admin-Provisioned Bcrypt Credentials for Faculty & Admin.
+- **Testing:** Vitest 5.0.5 (27 automated unit, security, and integration tests).
 
 ---
 
@@ -71,11 +71,10 @@ MP/
 │   └── migrations/            # Tracked SQL Migrations
 ├── src/
 │   ├── app/                   # App Router Pages & API Route Handlers
-│   │   ├── admin/             # Admin Dashboard, Directory & Settings
+│   │   ├── bosshere/          # Admin Control Center, Directory & Settings
 │   │   ├── faculty/           # Faculty Dashboard, Sessions & Reports
 │   │   ├── student/           # Student Dashboard, Scanner & History
 │   │   ├── api/               # Server-Side API Handlers with RBAC
-│   │   ├── demo-login/        # Instant Role Switcher
 │   │   └── page.tsx           # Landing Page
 │   ├── components/            # Reusable UI Primitives (Navbar, Sidebar, Badges, StatCards)
 │   └── lib/                   # Core Business Engines (auth, attendance, qr, csv, prisma)
@@ -112,8 +111,11 @@ cp .env.example .env
 # Run database migrations
 npx prisma migrate dev --name init
 
-# Seed synthetic test accounts and past attendance records
+# Initialize baseline system settings (non-destructive)
 npm run seed
+
+# Bootstrap the initial institutional administrator
+npm run admin:bootstrap -- --email=admin@institution.edu
 ```
 
 ### 3. Launch Development Server
@@ -144,19 +146,13 @@ npm run build
 
 ---
 
-## 👥 Demo Personas & Credentials
+## 👥 Institutional Access & Authentication Flows
 
-The application includes an **Instant Persona Switcher** in the top navbar:
-
-| Role | Persona Name | Identifier | Assigned Courses / Special Note |
-|---|---|---|---|
-| 👑 **ADMIN** | System Administrator | `admin@karunya.edu` | Full institutional controls |
-| 👨‍🏫 **FACULTY** | Dr. R. Sundar Raj | `EMP-CS-101` | Teaches `CS2041` (SE) & `CS2043` (DAA) |
-| 👩‍🏫 **FACULTY** | Prof. Anita Grace | `EMP-CS-102` | Teaches `CS2042` (DBMS) & `CS2044` (OS) |
-| 🎓 **STUDENT** | Joshua J | `URK25CS1140` | 90% attendance in SE, 87.5% in DBMS |
-| 🎓 **STUDENT** | Priya Sharma | `URK25CS1101` | 100% attendance benchmark |
-| 🎓 **STUDENT** | Rahul Nair | `URK25CS1102` | 70% attendance (Warning state) |
-| 🎓 **STUDENT** | Sneha Reddy | `URK25CS1103` | 50% attendance (Critical shortfall alert) |
+| Role | Access URL | Authentication Method | Provisioning Workflow | Authorization Rule |
+|---|---|---|---|---|
+| 👑 **ADMIN** | `/bosshere/login` | Institutional Credentials | Provisioned via CLI `npm run admin:bootstrap` or env credentials | Full administrative control over courses, faculty, students, and settings. |
+| 👨‍🏫 **FACULTY** | `/sign-in?role=faculty` | Admin-Provisioned Credentials | Created by Administrator via Admin Portal → Faculty Management | Restricted strictly to assigned subjects, sessions, and enrolled rosters. |
+| 🎓 **STUDENT** | `/sign-in?role=student` | Google OAuth (Institutional) | Registered by Administrator individually or via Google Forms/Sheets Bulk CSV import | Google authenticated email must strictly match an active, pre-registered student record. |
 
 ---
 

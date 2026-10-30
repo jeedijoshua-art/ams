@@ -6,10 +6,10 @@ export function RoleBadge({ role, className = '' }: { role: Role | string; class
   if (role === Role.ADMIN || role === 'ADMIN') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 ${className}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#F0BC65] border border-[#F0BC65]/30 ${className}`}
       >
-        <Shield className="w-3 h-3" />
-        Administrator
+        <Shield className="w-3 h-3 text-[#F0BC65]" />
+        ADMIN
       </span>
     );
   }
@@ -17,20 +17,20 @@ export function RoleBadge({ role, className = '' }: { role: Role | string; class
   if (role === Role.FACULTY || role === 'FACULTY') {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/30 ${className}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#C6F36B] border border-[#C6F36B]/30 ${className}`}
       >
-        <School className="w-3 h-3" />
-        Faculty
+        <School className="w-3 h-3 text-[#C6F36B]" />
+        FACULTY
       </span>
     );
   }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold bg-[#202622] text-[#72D6A0] border border-[#72D6A0]/30 ${className}`}
     >
-      <GraduationCap className="w-3.5 h-3.5" />
-      Student
+      <GraduationCap className="w-3 h-3 text-[#72D6A0]" />
+      STUDENT
     </span>
   );
 }
