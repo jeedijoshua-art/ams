@@ -7,6 +7,7 @@ export const CreateStudentSchema = z.object({
   rollNumber: z.string().min(3, 'Roll number is required').toUpperCase(),
   department: z.string().min(2, 'Department is required'),
   academicYear: z.string().min(2, 'Academic year is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128).optional(),
 });
 
 export const CreateFacultySchema = z.object({

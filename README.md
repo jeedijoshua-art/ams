@@ -120,9 +120,69 @@ npm run admin:bootstrap -- --email=admin@institution.edu
 
 ### 3. Launch Development Server
 ```bash
+# Standard local start (binds to 0.0.0.0:3000)
 npm run dev
+
+# Start with automatic local network IP display
+npm run dev:lan
+
+# Inspect current LAN IPv4 address without starting server
+npm run lan:ip
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your MacBook browser.
+
+---
+
+## 📡 Local Area Network (LAN) Multi-Device Demonstration
+
+AMS is fully optimized for local network demonstrations across laptops, smartphones, and tablets connected to the same Wi-Fi or Personal Hotspot, with your MacBook acting as the host server.
+
+### 1. Identify MacBook's LAN IP
+Run:
+```bash
+npm run lan:ip
+```
+The script inspects active network interfaces and outputs your current private IPv4 address (e.g. `http://172.20.10.3:3000` or `http://192.168.1.x:3000`).
+
+### 2. Connect Devices to the Same Network
+Ensure your MacBook, iPhone, and any other demonstration laptops are connected to:
+- The **same Wi-Fi router**, OR
+- An **iPhone Personal Hotspot** hosted from your phone to the MacBook.
+
+### 3. Open AMS from Connected Devices
+On iPhone Safari, Android Chrome, or another laptop, navigate to:
+```
+http://<MAC_LAN_IP>:3000
+```
+Examples:
+- **Landing Page:** `http://<MAC_LAN_IP>:3000`
+- **Faculty Portal:** `http://<MAC_LAN_IP>:3000/sign-in?role=faculty`
+- **Admin Control Center:** `http://<MAC_LAN_IP>:3000/bosshere/login`
+- **Student Check-In:** `http://<MAC_LAN_IP>:3000/student/scan`
+
+### 4. macOS Firewall Troubleshooting
+If other devices cannot load `http://<MAC_LAN_IP>:3000`:
+1. Open **System Settings → Network → Firewall**.
+2. If the Firewall is enabled, click **Options...** and ensure `node` is set to **"Allow incoming connections"**, OR temporarily disable the firewall during the demonstration.
+3. Test connectivity from another device terminal or browser.
+
+### 5. Database & Neon Cloud Connectivity
+AMS connects to a serverless Neon PostgreSQL database via pooled connection strings (`DATABASE_URL`). As long as the MacBook has active internet access (Wi-Fi or mobile data sharing), all database queries, migrations, and updates execute seamlessly with zero local PostgreSQL daemon setup required.
+
+### 6. Mobile Browser Camera & HTTPS Requirements
+> [!IMPORTANT]
+> **Mobile Browser Security Standard:** iOS Safari and Android Chrome strictly disable WebRTC camera streaming (`navigator.mediaDevices.getUserMedia`) on plain `http://` non-localhost connections.
+> 
+> **How AMS Handles This:**
+> - **Zero-Friction Fallback:** On a plain HTTP local network, the AMS Scanner detects the non-secure context and automatically activates **Manual Token Entry**. Students simply type the 6-character token displayed on the faculty screen to check in immediately.
+> - **Camera QR Scanning:** To demonstrate live optical camera scanning, use a laptop webcam on `http://localhost:3000`, or access the production HTTPS deployment at [ams-five-mu.vercel.app](https://ams-five-mu.vercel.app).
+> - **Local HTTPS (Optional):** If optical camera scanning is strictly required over LAN, run Next.js with local development certificates via `npx next dev --experimental-https` and install the root certificate authority on your iPhone.
+
+### 7. Production Vercel Deployment
+To return to or access the cloud production deployment:
+- **Live Production URL:** [https://ams-five-mu.vercel.app](https://ams-five-mu.vercel.app)
+- **Admin Access:** [https://ams-five-mu.vercel.app/bosshere/login](https://ams-five-mu.vercel.app/bosshere/login)
+- **Repository:** [https://github.com/jeedijoshua-art/ams](https://github.com/jeedijoshua-art/ams)
 
 ---
 

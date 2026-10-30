@@ -46,8 +46,8 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
         const reqHeaders = await headers();
         const cookieHeader = reqHeaders.get('cookie') || '';
 
-        const tunnelMatch = cookieHeader.match(/(?:^|;\s*)__Secure-authjs\.session-token=([^;]+)/);
-        const lanMatch = cookieHeader.match(/(?:^|;\s*)authjs\.session-token=([^;]+)/);
+        const tunnelMatch = cookieHeader.match(/(?:^|;\s*)__Secure-authjs\.session-token(?:\.0)?=([^;]+)/);
+        const lanMatch = cookieHeader.match(/(?:^|;\s*)authjs\.session-token(?:\.0)?=([^;]+)/);
 
         const rawToken = tunnelMatch?.[1] || lanMatch?.[1];
         const salt = tunnelMatch ? '__Secure-authjs.session-token' : 'authjs.session-token';

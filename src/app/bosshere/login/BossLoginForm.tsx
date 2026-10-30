@@ -21,22 +21,26 @@ export default function BossLoginForm() {
         email: identifier.trim().toLowerCase(),
         password,
         redirect: false,
+        callbackUrl: '/bosshere',
       });
 
-      if (res?.error) {
-        if (res.error === 'MissingCSRF') {
+      if (!res?.ok || res?.error) {
+        if (res?.error === 'MissingCSRF') {
           setError('Security verification failed (Missing CSRF). Please refresh the page and verify browser cookies are enabled.');
-        } else if (res.error.includes('throttled') || res.error.includes('Too many failed')) {
+        } else if (res?.error?.includes('throttled') || res?.error?.includes('Too many failed')) {
           setError('Too many failed login attempts. Throttled for 5 minutes.');
+        } else if (res?.error?.includes('UNAUTHORIZED_ORIGIN')) {
+          setError('Origin verification failed: The current domain is not authorized for authentication.');
         } else {
           setError('Invalid administrator credentials.');
         }
         setLoading(false);
-      } else {
-        // Hard navigation guarantees fresh session cookie is sent on server render across tabs
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.href = '/bosshere';
+        return;
       }
+
+      // Hard navigation guarantees fresh session cookie is sent on server render across tabs
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = '/bosshere';
     } catch (err: any) {
       setError(err?.message || 'An unexpected error occurred. Please try again.');
       setLoading(false);

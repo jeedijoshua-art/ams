@@ -19,6 +19,8 @@ import {
   X,
   Pencil,
   RefreshCw,
+  Key,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function AdminStudentsPage() {
@@ -28,6 +30,9 @@ export default function AdminStudentsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordStudent, setPasswordStudent] = useState<any>(null);
+  const [newStudentPassword, setNewStudentPassword] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -42,6 +47,7 @@ export default function AdminStudentsPage() {
     email: '',
     department: 'Computer Science and Engineering',
     academicYear: '2024-2028 (2nd Year)',
+    password: '',
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -115,6 +121,7 @@ export default function AdminStudentsPage() {
           email: '',
           department: 'Computer Science and Engineering',
           academicYear: '2024-2028 (2nd Year)',
+          password: '',
         });
         fetchStudents();
       } else {
@@ -122,6 +129,46 @@ export default function AdminStudentsPage() {
       }
     } catch (err: any) {
       setFeedback({ type: 'error', text: err.message || 'Network error.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePasswordClick = (student: any) => {
+    setPasswordStudent(student);
+    setNewStudentPassword('');
+    setShowPasswordModal(true);
+  };
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordStudent || !newStudentPassword) return;
+    setSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch('/api/admin/student-password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentProfileId: passwordStudent.id,
+          newPassword: newStudentPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFeedback({
+          type: 'success',
+          text: `Credentials provisioned! Password successfully updated for student ${passwordStudent.name} (${passwordStudent.rollNumber}).`,
+        });
+        setShowPasswordModal(false);
+        setPasswordStudent(null);
+        setNewStudentPassword('');
+      } else {
+        setFeedback({ type: 'error', text: data.error || 'Failed to update student password.' });
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: err.message || 'Network error updating student password.' });
     } finally {
       setSubmitting(false);
     }
@@ -406,6 +453,13 @@ export default function AdminStudentsPage() {
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <button
+                              onClick={() => handlePasswordClick(s)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-[#202622] hover:bg-[#303831] text-[#F0BC65] border-[#303831] transition-colors mr-2"
+                              title="Provision or reset student password"
+                            >
+                              <Key className="w-3 h-3" /> Password
+                            </button>
+                            <button
                               onClick={() => handleEditClick(s)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-[#202622] hover:bg-[#303831] text-[#C6F36B] border-[#303831] transition-colors mr-2"
                               title="Edit student and email"
@@ -531,6 +585,22 @@ export default function AdminStudentsPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-medium text-[#A0A89F] mb-1">
+                      Initial Password (Optional — for LAN / Direct Sign-In)
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Minimum 8 characters (leave blank to provision later)"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] placeholder-[#A0A89F] focus:outline-none focus:border-[#C6F36B]"
+                    />
+                    <p className="text-[10px] text-[#A0A89F]/70 mt-1">
+                      If set, the student can sign in immediately on local network (LAN) using their email/roll number and this password.
+                    </p>
+                  </div>
+
                   <div className="flex items-center justify-end gap-3 pt-3">
                     <button
                       type="button"
@@ -654,6 +724,94 @@ export default function AdminStudentsPage() {
                     >
                       {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       Update Student
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Provision / Reset Student Password */}
+          {showPasswordModal && passwordStudent && (
+            <div className="fixed inset-0 z-50 bg-[#101211]/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-md rounded-xl bg-[#171B18] border border-[#303831] p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-[#F1F3ED] flex items-center gap-2">
+                    <Key className="w-5 h-5 text-[#F0BC65]" />
+                    Provision Student Password
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowPasswordModal(false);
+                      setPasswordStudent(null);
+                    }}
+                    className="text-[#A0A89F] hover:text-[#F1F3ED]"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs text-[#A0A89F] mb-4">
+                  Issue or reset credentials for this registered student. Passwords are securely hashed with bcrypt and never stored in plain text.
+                </p>
+
+                {/* Student summary info */}
+                <div className="p-3 mb-4 rounded-xl bg-[#202622] border border-[#303831] space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#A0A89F]">Student:</span>
+                    <span className="font-semibold text-[#F1F3ED]">{passwordStudent.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A0A89F]">Roll Number:</span>
+                    <span className="font-mono text-[#C6F36B]">{passwordStudent.rollNumber}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A0A89F]">Email:</span>
+                    <span className="font-mono text-[#A0A89F]">{passwordStudent.user?.email}</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSavePassword} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-[#A0A89F] mb-1">
+                      New Password (Minimum 8 Characters)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      value={newStudentPassword}
+                      onChange={(e) => setNewStudentPassword(e.target.value)}
+                      placeholder="Enter new strong password"
+                      className="w-full px-3 py-2 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] placeholder-[#A0A89F] focus:outline-none focus:border-[#C6F36B]"
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-[#F0BC65]/10 border border-[#F0BC65]/20 text-[11px] text-[#F0BC65] flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      The student can log into the Student Portal on local network (LAN) and HTTPS using their email or Roll Number (<strong className="font-mono">{passwordStudent.rollNumber}</strong>) and this password.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasswordModal(false);
+                        setPasswordStudent(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#202622] hover:bg-[#303831] text-xs font-semibold text-[#A0A89F] border border-[#303831]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submitting || newStudentPassword.length < 8}
+                      className="px-4 py-2 rounded-xl bg-[#F0BC65] hover:bg-[#ffd17d] disabled:opacity-50 text-xs font-bold text-[#101211] flex items-center gap-1.5"
+                    >
+                      {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Save & Issue Credentials
                     </button>
                   </div>
                 </form>

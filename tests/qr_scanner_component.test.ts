@@ -36,8 +36,8 @@ describe('QR Scanner Payload Parsing & Concurrency Guards', () => {
   });
 
   describe('2. URL Payload Parsing (Deep-Links & Query Parameters)', () => {
-    it('extracts sessionId and token from full HTTPS URL', () => {
-      const fullUrl = `https://alabaster-confident-distinct.ngrok-free.dev/student/scan?sessionId=${sampleSessionId}&token=${sampleToken}`;
+    it('extracts sessionId and token from full LAN HTTP URL', () => {
+      const fullUrl = `http://172.20.10.3:3000/student/scan?sessionId=${sampleSessionId}&token=${sampleToken}`;
       const parsed = parseQrPayload(fullUrl);
       expect(parsed).not.toBeNull();
       expect(parsed?.sessionId).toBe(sampleSessionId);

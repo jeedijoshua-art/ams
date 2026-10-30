@@ -82,8 +82,8 @@ export function QrScanner({
       if (!secureContext && !isLoopback) {
         setMessage({
           type: 'warning',
-          title: 'HTTPS Required for Camera on Mobile',
-          text: 'iOS Safari and mobile browsers disable WebRTC camera APIs on plain HTTP LAN IPs. To scan with your camera, open AMS via your active HTTPS tunnel (ngrok), or use the manual token entry below.',
+          title: 'Camera Requires Secure Context (HTTPS or localhost)',
+          text: 'Mobile browsers (iOS Safari, Android Chrome) restrict camera access on non-localhost plain HTTP LAN connections. To mark attendance from your mobile device on LAN, enter the session token below, or access AMS over HTTPS.',
         });
       }
     }
@@ -723,7 +723,7 @@ export function QrScanner({
           <div className="mt-4 p-3 rounded-lg bg-[#F0BC65]/10 border border-[#F0BC65]/20 text-[#F0BC65] text-xs flex items-center gap-2 text-left">
             <ShieldAlert className="w-4 h-4 shrink-0 text-[#F0BC65]" />
             <span>
-              <strong>Note:</strong> Browsers disable camera access on plain HTTP LAN IPs. Access via your HTTPS tunnel (ngrok) for full camera scanning, or use Manual Token Entry below.
+              <strong>Mobile Camera Note:</strong> Mobile browsers restrict camera access on plain HTTP local network connections. Enter the session token below or use localhost/HTTPS for camera scanning.
             </span>
           </div>
         )}

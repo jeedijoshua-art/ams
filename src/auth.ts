@@ -118,7 +118,9 @@ export const authConfig: NextAuthConfig = {
         // 1. Check for dedicated Administrator Credentials (boss / Boss@123)
         const isAdminIdentifier =
           rawIdentifier === envAdminUsername ||
-          rawIdentifier === envAdminEmail;
+          rawIdentifier === envAdminEmail ||
+          rawIdentifier === 'boss' ||
+          rawIdentifier === 'boss@ams.local';
 
         if (isAdminIdentifier) {
           let adminUser = await prisma.user.findFirst({
@@ -126,6 +128,8 @@ export const authConfig: NextAuthConfig = {
               OR: [
                 { email: envAdminEmail },
                 { authUserId: `admin-${envAdminUsername}` },
+                { authUserId: 'admin-boss' },
+                { email: 'boss@ams.local' },
               ],
             },
           });
@@ -133,6 +137,7 @@ export const authConfig: NextAuthConfig = {
           if (!adminUser) {
             adminUser = await prisma.user.findFirst({
               where: { role: Role.ADMIN },
+              orderBy: { createdAt: 'asc' },
             });
           }
 
@@ -179,7 +184,11 @@ export const authConfig: NextAuthConfig = {
         // 2. Standard Institutional Credentials (Faculty / Staff / Students)
         const user = await prisma.user.findFirst({
           where: {
-            email: { equals: rawIdentifier, mode: 'insensitive' },
+            OR: [
+              { email: { equals: rawIdentifier, mode: 'insensitive' } },
+              { studentProfile: { rollNumber: { equals: rawIdentifier, mode: 'insensitive' } } },
+              { facultyProfile: { employeeId: { equals: rawIdentifier, mode: 'insensitive' } } },
+            ],
           },
           include: {
             facultyProfile: true,
@@ -200,6 +209,13 @@ export const authConfig: NextAuthConfig = {
 
         if (user.role === Role.FACULTY) {
           if (!user.facultyProfile || !user.facultyProfile.isActive) {
+            recordFailedAttempt(rawIdentifier);
+            return null;
+          }
+        }
+
+        if (user.role === Role.STUDENT) {
+          if (!user.studentProfile || !user.studentProfile.isActive) {
             recordFailedAttempt(rawIdentifier);
             return null;
           }

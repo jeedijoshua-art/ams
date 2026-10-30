@@ -11,7 +11,9 @@ export function proxy(request: NextRequest) {
 
   const hasSession =
     request.cookies.has('authjs.session-token') ||
-    request.cookies.has('__Secure-authjs.session-token');
+    request.cookies.has('__Secure-authjs.session-token') ||
+    request.cookies.has('authjs.session-token.0') ||
+    request.cookies.has('__Secure-authjs.session-token.0');
 
   // 2. Protect /bosshere routes (except /bosshere/login)
   if (pathname.startsWith('/bosshere') && !pathname.startsWith('/bosshere/login')) {

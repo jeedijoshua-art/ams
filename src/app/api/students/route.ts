@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { requireAdmin, requireAuth } from '@/lib/auth';
 import { CreateStudentSchema } from '@/lib/validators';
 import { Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import { invalidateUserSessionCache } from '@/auth';
 
 export async function GET(request: Request) {
@@ -125,6 +126,9 @@ export async function POST(request: Request) {
     }
 
     const authUserId = `auth_${validated.rollNumber.toLowerCase()}_${Date.now()}`;
+    const passwordHash = validated.password
+      ? await bcrypt.hash(validated.password, 10)
+      : null;
 
     const newUser = await prisma.user.create({
       data: {
@@ -132,6 +136,7 @@ export async function POST(request: Request) {
         authUserId,
         role: Role.STUDENT,
         isActive: true,
+        passwordHash,
         studentProfile: {
           create: {
             name: validated.name,
@@ -161,10 +166,14 @@ export async function PATCH(request: Request) {
     await requireAdmin();
 
     const body = await request.json();
-    const { id, isActive, name, department, academicYear, classSection, email } = body;
+    const { id, isActive, name, department, academicYear, classSection, email, password } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Student ID is required.' }, { status: 400 });
+    }
+
+    if (password !== undefined && typeof password === 'string' && password.length < 8) {
+      return NextResponse.json({ error: 'Password must be at least 8 characters long.' }, { status: 400 });
     }
 
     const student = await prisma.studentProfile.findUnique({
@@ -181,6 +190,9 @@ export async function PATCH(request: Request) {
       const userUpdates: any = {};
       if (typeof isActive === 'boolean') {
         userUpdates.isActive = isActive;
+      }
+      if (password && typeof password === 'string') {
+        userUpdates.passwordHash = await bcrypt.hash(password, 10);
       }
       if (email && typeof email === 'string') {
         const normalizedEmail = email.toLowerCase().trim();

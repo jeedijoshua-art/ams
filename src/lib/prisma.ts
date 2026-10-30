@@ -21,9 +21,14 @@ function createPrismaClient(): PrismaClient {
         modified = true;
       }
 
-      // Resilient connect timeout (15s) for mobile networks and cold Neon compute wake-ups (prevents P1001)
+      // Resilient connect timeout (15s) and connection pool timeout (30s) for cold Neon compute wake-ups
       if (!parsed.searchParams.has('connect_timeout')) {
         parsed.searchParams.set('connect_timeout', '15');
+        modified = true;
+      }
+
+      if (!parsed.searchParams.has('pool_timeout')) {
+        parsed.searchParams.set('pool_timeout', '30');
         modified = true;
       }
 
