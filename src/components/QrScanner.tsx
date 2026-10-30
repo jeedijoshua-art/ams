@@ -20,6 +20,9 @@ import {
   ShieldAlert,
   Sparkles,
   RefreshCw,
+  Upload,
+  ExternalLink,
+  Lock,
 } from 'lucide-react';
 import { parseQrPayload } from '@/lib/qr-payload';
 
@@ -46,11 +49,16 @@ export function QrScanner({
 }: QrScannerProps) {
   const [scannerStatus, setScannerStatus] = useState<ScannerStatus>('idle');
   const [isSecure, setIsSecure] = useState(true);
+  const [isHttps, setIsHttps] = useState(false);
+  const [isLoopback, setIsLoopback] = useState(false);
   const [hasMediaDevices, setHasMediaDevices] = useState(true);
   const [cameras, setCameras] = useState<CameraDevice[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [manualSessionId, setManualSessionId] = useState(prefilledSessionId || '');
   const [manualToken, setManualToken] = useState(prefilledToken || '');
+  const [openSessions, setOpenSessions] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [selectedSubjectName, setSelectedSubjectName] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     type: 'success' | 'error' | 'warning';
     title?: string;
@@ -59,6 +67,7 @@ export function QrScanner({
 
   // References for strict lifecycle management & duplicate submission suppression
   const viewportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const qrInstanceRef = useRef<Html5Qrcode | null>(null);
   const isStartingRef = useRef(false);
   const isStoppingRef = useRef(false);
@@ -71,19 +80,23 @@ export function QrScanner({
     isMountedRef.current = true;
 
     if (typeof window !== 'undefined') {
-      const isLoopback =
+      const loopback =
         window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const secureContext = window.isSecureContext || isLoopback;
+      const httpsProto = window.location.protocol === 'https:';
+      setIsLoopback(loopback);
+      setIsHttps(httpsProto);
+
+      const secureContext = Boolean(window.isSecureContext || loopback || httpsProto);
       setIsSecure(secureContext);
 
       const mediaAvailable = Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
       setHasMediaDevices(mediaAvailable);
 
-      if (!secureContext && !isLoopback) {
+      if (!secureContext && !loopback) {
         setMessage({
           type: 'warning',
-          title: 'Camera Requires Secure Context (HTTPS or localhost)',
-          text: 'Mobile browsers (iOS Safari, Android Chrome) restrict camera access on non-localhost plain HTTP LAN connections. To mark attendance from your mobile device on LAN, enter the session token below, or access AMS over HTTPS.',
+          title: 'Mobile Camera Restricted on HTTP',
+          text: 'Mobile browsers (iOS Safari, Android Chrome) block live video streaming on plain HTTP. You can use "Snap QR Photo" below, switch to HTTPS for live camera, or enter the 6-character code.',
         });
       }
     }
@@ -123,6 +136,40 @@ export function QrScanner({
       }
     };
   }, []);
+
+  // Fetch currently open attendance sessions for enrolled student
+  useEffect(() => {
+    const fetchActiveSessions = async () => {
+      setLoadingSessions(true);
+      try {
+        const res = await fetch('/api/sessions?status=OPEN');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.sessions && Array.isArray(data.sessions)) {
+            setOpenSessions(data.sessions);
+            if (prefilledSessionId) {
+              const matched = data.sessions.find((s: any) => s.id === prefilledSessionId);
+              if (matched) {
+                setSelectedSubjectName(`${matched.subject.code}: ${matched.subject.name}`);
+              }
+            } else if (data.sessions.length > 0) {
+              // Automatically select the active session so the student doesn't have to type UUID!
+              setManualSessionId(data.sessions[0].id);
+              setSelectedSubjectName(
+                `${data.sessions[0].subject.code}: ${data.sessions[0].subject.name}`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[QR-SCANNER] Failed to fetch active sessions:', err);
+      } finally {
+        setLoadingSessions(false);
+      }
+    };
+
+    fetchActiveSessions();
+  }, [prefilledSessionId]);
 
   // Sync prefilled values if provided asynchronously
   useEffect(() => {
@@ -278,9 +325,13 @@ export function QrScanner({
       }
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error(
-          'Camera API is not supported in this browser. Please access over HTTPS or use Manual Token Entry.'
-        );
+        setMessage({
+          type: 'warning',
+          title: 'Mobile Camera Restricted on HTTP',
+          text: 'Mobile browsers (iOS Safari, Android Chrome) restrict camera hardware on plain HTTP local network connections. Use the Quick Verification Code form below to record attendance.',
+        });
+        setScannerStatus('idle');
+        return;
       }
 
       // Initialize Html5Qrcode with specialized QR format config & native BarcodeDetector acceleration
@@ -329,16 +380,37 @@ export function QrScanner({
           errMsg.includes('constraint') ||
           errMsg.includes('NotFoundError');
 
-        if (!cameraIdToUse && isConstraintErr) {
-          console.warn('[QR-SCANNER] Rear camera unavailable, falling back to front/default camera...');
-          await html5Qr.start(
-            { facingMode: 'user' },
-            scanConfig,
-            (decodedText) => {
-              handleQrDecoded(decodedText);
-            },
-            () => {}
-          );
+        if (!cameraIdToUse) {
+          console.warn('[QR-SCANNER] Rear camera attempt failed, trying front/default camera...', startErr);
+          try {
+            await html5Qr.start(
+              { facingMode: 'user' },
+              scanConfig,
+              (decodedText) => {
+                handleQrDecoded(decodedText);
+              },
+              () => {}
+            );
+          } catch (userErr: any) {
+            // Final fallback: Enumerate available video inputs directly
+            if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+              const allDevs = await navigator.mediaDevices.enumerateDevices();
+              const firstVideo = allDevs.find((d) => d.kind === 'videoinput');
+              if (firstVideo?.deviceId) {
+                console.warn('[QR-SCANNER] Attempting first enumerated device:', firstVideo.label || firstVideo.deviceId);
+                await html5Qr.start(
+                  firstVideo.deviceId,
+                  scanConfig,
+                  (decodedText) => {
+                    handleQrDecoded(decodedText);
+                  },
+                  () => {}
+                );
+                return;
+              }
+            }
+            throw startErr;
+          }
         } else {
           throw startErr;
         }
@@ -439,6 +511,57 @@ export function QrScanner({
     const nextCamera = cameras[activeCameraIndexRef.current];
     setSelectedCameraId(nextCamera.id);
     await startCameraScanner(nextCamera.id);
+  };
+
+  const handleSwitchToHttps = () => {
+    if (typeof window !== 'undefined') {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.protocol = 'https:';
+      window.location.href = currentUrl.toString();
+    }
+  };
+
+  const handleFileScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setScannerStatus('submitting');
+    setMessage({
+      type: 'warning',
+      title: 'Analyzing Photo...',
+      text: 'Decoding cryptographic QR attendance token from captured photo.',
+    });
+
+    try {
+      let html5Qr = qrInstanceRef.current;
+      if (!html5Qr) {
+        html5Qr = new Html5Qrcode('ams-qr-reader-viewport', {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
+        qrInstanceRef.current = html5Qr;
+      }
+
+      console.log('[QR-DIAGNOSTIC] Scanning photo file via Html5Qrcode.scanFile...');
+      const decodedText = await html5Qr.scanFile(file, true);
+      isSubmittingRef.current = false;
+      await handleQrDecoded(decodedText);
+    } catch (err: any) {
+      console.warn('[QR-SCANNER] Photo QR scan failed:', err);
+      isSubmittingRef.current = false;
+      setScannerStatus('idle');
+      setMessage({
+        type: 'error',
+        title: 'QR Code Not Detected in Photo',
+        text: 'Could not read a clear AMS attendance QR code from the captured photo. Hold steady, ensure good lighting on the screen, and retry or enter the 6-character code below.',
+      });
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleQrDecoded = async (decodedText: string) => {
@@ -608,42 +731,80 @@ export function QrScanner({
               </div>
 
               <h3 className="text-base sm:text-lg font-bold text-[#F1F3ED]">
-                {scannerStatus === 'error' ? 'Camera Stopped' : 'Live Camera Scanner'}
+                {scannerStatus === 'error' ? 'Camera Stopped' : 'Classroom QR Scanner'}
               </h3>
-              <p className="text-xs text-[#A0A89F] max-w-xs mt-1.5 mb-6 leading-relaxed">
+              <p className="text-xs text-[#A0A89F] max-w-xs mt-1.5 mb-5 leading-relaxed">
                 {scannerStatus === 'error'
                   ? 'Resolve camera permissions or retry below.'
-                  : 'Point camera at the instructor’s projection screen to record attendance.'}
+                  : 'Scan the faculty attendance QR code projected in class.'}
               </p>
 
-              <button
-                type="button"
-                onClick={() => startCameraScanner()}
-                disabled={isBusy}
-                className="w-full sm:w-auto min-h-[44px] px-6 py-3 rounded-xl bg-[#C6F36B] hover:bg-[#b5e855] disabled:opacity-50 text-[#101211] font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#C6F36B]/25 flex items-center justify-center gap-2 cursor-pointer touch-manipulation select-none"
-              >
-                {scannerStatus === 'requesting_permission' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#101211]" />
-                    Requesting Permission...
-                  </>
-                ) : scannerStatus === 'starting' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#101211]" />
-                    Starting Camera...
-                  </>
-                ) : scannerStatus === 'error' ? (
-                  <>
-                    <RotateCw className="w-4 h-4" />
-                    Retry Camera
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4" />
-                    Start Camera Scanner
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-sm">
+                {/* Live Camera Scanner Button */}
+                <button
+                  type="button"
+                  onClick={() => startCameraScanner()}
+                  disabled={isBusy}
+                  className="w-full sm:w-auto min-h-[44px] px-5 py-3 rounded-xl bg-[#C6F36B] hover:bg-[#b5e855] disabled:opacity-50 text-[#101211] font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-[#C6F36B]/25 flex items-center justify-center gap-2 cursor-pointer touch-manipulation select-none"
+                >
+                  {scannerStatus === 'requesting_permission' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#101211]" />
+                      Requesting Permission...
+                    </>
+                  ) : scannerStatus === 'starting' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#101211]" />
+                      Starting Camera...
+                    </>
+                  ) : scannerStatus === 'error' ? (
+                    <>
+                      <RotateCw className="w-4 h-4" />
+                      Retry Camera
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4" />
+                      Start Live Camera
+                    </>
+                  )}
+                </button>
+
+                {/* Snap QR Code Photo Button (Native Camera - Works on HTTP & HTTPS) */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isBusy}
+                  className="w-full sm:w-auto min-h-[44px] px-4 py-3 rounded-xl bg-[#202622] hover:bg-[#303831] border border-[#303831] text-[#F1F3ED] font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer touch-manipulation select-none"
+                  title="Snap a photo of the QR code using your phone's native camera"
+                >
+                  <Upload className="w-4 h-4 text-[#C6F36B]" />
+                  <span>Snap QR Photo</span>
+                </button>
+              </div>
+
+              {/* Hidden Native Camera File Input with capture="environment" */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileScan}
+              />
+
+              {!isHttps && !isLoopback && (
+                <button
+                  type="button"
+                  onClick={handleSwitchToHttps}
+                  className="mt-4 text-[11px] text-[#C6F36B] hover:underline flex items-center gap-1.5 font-medium cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Switch to HTTPS (Unlocks Live Camera Stream)</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              )}
             </div>
           )}
 
@@ -720,23 +881,35 @@ export function QrScanner({
 
         {/* LAN Insecure Context Advisory */}
         {!isSecure && (
-          <div className="mt-4 p-3 rounded-lg bg-[#F0BC65]/10 border border-[#F0BC65]/20 text-[#F0BC65] text-xs flex items-center gap-2 text-left">
-            <ShieldAlert className="w-4 h-4 shrink-0 text-[#F0BC65]" />
-            <span>
-              <strong>Mobile Camera Note:</strong> Mobile browsers restrict camera access on plain HTTP local network connections. Enter the session token below or use localhost/HTTPS for camera scanning.
-            </span>
+          <div className="mt-4 p-3.5 rounded-lg bg-[#F0BC65]/10 border border-[#F0BC65]/20 text-[#F0BC65] text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-[#F0BC65] mt-0.5" />
+              <span>
+                <strong>Mobile Camera Note:</strong> Mobile browsers restrict live streaming video on plain HTTP. Use <strong>Snap QR Photo</strong> above, switch to HTTPS, or enter the 6-character code below.
+              </span>
+            </div>
+            {!isHttps && !isLoopback && (
+              <button
+                type="button"
+                onClick={handleSwitchToHttps}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-[#F0BC65]/20 hover:bg-[#F0BC65]/30 text-[#F0BC65] font-bold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Lock className="w-3 h-3" />
+                Switch to HTTPS
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {/* Manual Token Entry Fallback */}
       <div className="p-6 rounded-xl bg-[#171B18] border border-[#303831] shadow-xl">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <KeyRound className="w-4 h-4 text-[#C6F36B]" />
-          <h4 className="text-sm font-bold text-[#F1F3ED]">Manual Token Entry</h4>
+          <h4 className="text-sm font-bold text-[#F1F3ED]">Quick Verification Code Entry</h4>
         </div>
         <p className="text-xs text-[#A0A89F] mb-4 leading-relaxed">
-          If your camera cannot scan the projection screen, enter the verification token shown under the classroom QR code.
+          Enter the 6-character verification code or token displayed on the classroom projection screen.
         </p>
 
         <form
@@ -744,53 +917,86 @@ export function QrScanner({
             e.preventDefault();
             submitCheckIn(manualSessionId, manualToken);
           }}
-          className="space-y-3"
+          className="space-y-4"
           suppressHydrationWarning
         >
           <div>
-            <label className="block text-[11px] font-semibold text-[#A0A89F] uppercase tracking-wider mb-1">
-              Session Identifier
+            <label className="block text-[11px] font-semibold text-[#A0A89F] uppercase tracking-wider mb-1.5">
+              Course / Class Session
             </label>
-            <input
-              type="text"
-              required
-              value={manualSessionId}
-              onChange={(e) => setManualSessionId(e.target.value)}
-              placeholder="e.g. 5468fb9d-008d-4b72-be92-427587e525c4"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] placeholder-[#A0A89F]/50 focus:outline-none focus:border-[#C6F36B] transition-all font-mono"
-              suppressHydrationWarning
-            />
+            {openSessions.length > 0 ? (
+              <select
+                value={manualSessionId}
+                onChange={(e) => {
+                  setManualSessionId(e.target.value);
+                  const selected = openSessions.find((s) => s.id === e.target.value);
+                  if (selected) {
+                    setSelectedSubjectName(`${selected.subject.code}: ${selected.subject.name}`);
+                  }
+                }}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] focus:outline-none focus:border-[#C6F36B] transition-all font-medium"
+              >
+                {openSessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.subject.code} — {s.subject.name} ({s.classSection || 'CSE-A'})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                required
+                value={manualSessionId}
+                onChange={(e) => setManualSessionId(e.target.value)}
+                placeholder="e.g. 5468fb9d-008d-4b72-be92-427587e525c4"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] placeholder-[#A0A89F]/50 focus:outline-none focus:border-[#C6F36B] transition-all font-mono"
+                suppressHydrationWarning
+              />
+            )}
+            {selectedSubjectName && (
+              <span className="text-[11px] text-[#C6F36B] font-semibold mt-1.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C6F36B]" />
+                Selected: {selectedSubjectName}
+              </span>
+            )}
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-[#A0A89F] uppercase tracking-wider mb-1">
-              Classroom QR Token
+            <label className="block text-[11px] font-semibold text-[#A0A89F] uppercase tracking-wider mb-1.5">
+              Classroom Code / QR Token
             </label>
             <input
               type="text"
               required
+              autoCapitalize="characters"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck="false"
               value={manualToken}
-              onChange={(e) => setManualToken(e.target.value)}
-              placeholder="Enter active alphanumeric token from projection"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-xs text-[#F1F3ED] placeholder-[#A0A89F]/50 focus:outline-none focus:border-[#C6F36B] transition-all font-mono"
+              onChange={(e) => setManualToken(e.target.value.toUpperCase())}
+              placeholder="e.g. 6-character code (K7P9X2) or full token"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#202622] border border-[#303831] text-sm text-[#C6F36B] placeholder-[#A0A89F]/50 focus:outline-none focus:border-[#C6F36B] transition-all font-mono tracking-widest font-bold"
               suppressHydrationWarning
             />
+            <p className="text-[10px] text-[#A0A89F] mt-1">
+              Case-insensitive code displayed on classroom projector.
+            </p>
           </div>
 
           <button
             type="submit"
             disabled={isBusy || !manualSessionId.trim() || !manualToken.trim()}
-            className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-[#202622] hover:bg-[#303831] active:bg-[#303831] disabled:opacity-40 text-[#F1F3ED] font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer mt-1 touch-manipulation"
+            className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-[#C6F36B] hover:bg-[#D4FF83] active:bg-[#b5e855] disabled:opacity-40 text-[#101211] font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 shadow-lg shadow-[#C6F36B]/20 touch-manipulation"
           >
             {scannerStatus === 'submitting' ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C6F36B]" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#101211]" />
                 Recording Attendance...
               </>
             ) : (
               <>
-                <span>Submit Verification Token</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#C6F36B]" />
+                <span>Submit Verification Code</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
           </button>

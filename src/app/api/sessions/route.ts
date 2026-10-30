@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireFaculty, getCurrentUser } from '@/lib/auth';
 import { CreateSessionSchema } from '@/lib/validators';
-import { generateSecureToken, hashToken, generateQrDataUrl } from '@/lib/qr';
+import { generateSecureToken, generateShortCode, hashToken, generateQrDataUrl } from '@/lib/qr';
 import { Role, SessionStatus } from '@prisma/client';
 
 export async function GET(request: Request) {
@@ -86,9 +86,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Generate random cryptographically secure token & hash
+    // 2. Generate random cryptographically secure token, human-friendly shortCode & hash
     const rawToken = generateSecureToken();
-    const tokenHash = hashToken(rawToken);
+    const shortCode = generateShortCode();
+    const tokenHash = `${hashToken(rawToken)}:${hashToken(shortCode)}`;
 
     const now = new Date();
     const endsAt = new Date(now.getTime() + validated.durationMinutes * 60 * 1000);
@@ -113,11 +114,12 @@ export async function POST(request: Request) {
     });
 
     // 4. Generate QR payload and DataURL for immediate display
-    // Payload contains standard JSON with sessionId and rawToken
+    // Payload contains standard JSON with sessionId, rawToken, and shortCode
     const qrPayload = JSON.stringify({
       type: 'AMS_ATTENDANCE',
       sessionId: session.id,
       token: rawToken,
+      shortCode,
     });
 
     const qrDataUrl = await generateQrDataUrl(qrPayload);
@@ -128,6 +130,7 @@ export async function POST(request: Request) {
         session,
         qr: {
           token: rawToken,
+          shortCode,
           expiresAt: qrExpiresAt,
           dataUrl: qrDataUrl,
           payload: qrPayload,

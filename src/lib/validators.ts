@@ -32,7 +32,7 @@ export const EnrollStudentSchema = z.object({
 export const CreateSessionSchema = z.object({
   subjectId: z.string().uuid('Invalid subject ID'),
   durationMinutes: z.number().int().min(1).max(240).default(50),
-  qrExpiryMinutes: z.number().int().min(1).max(30).default(2),
+  qrExpiryMinutes: z.number().int().min(1).max(60).default(10),
   period: z.number().int().min(1).max(12).optional().default(1),
   classSection: z.string().optional().default('CSE-A'),
 });

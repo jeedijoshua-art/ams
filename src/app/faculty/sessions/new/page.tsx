@@ -30,7 +30,7 @@ function NewSessionContent() {
   const [classSection, setClassSection] = useState('CSE-A');
   const [period, setPeriod] = useState(1);
   const [durationMinutes, setDurationMinutes] = useState(50);
-  const [qrExpiryMinutes, setQrExpiryMinutes] = useState(2);
+  const [qrExpiryMinutes, setQrExpiryMinutes] = useState(10);
   const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Selected subject details

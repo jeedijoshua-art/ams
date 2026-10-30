@@ -39,7 +39,7 @@ function StudentScanContent() {
                   Mark Attendance
                 </h1>
                 <p className="text-xs text-[#A0A89F] mt-0.5">
-                  Point camera at projection screen or enter verification token.
+                  Scan classroom QR code or enter the 6-character verification code.
                 </p>
               </div>
             </div>
@@ -68,12 +68,14 @@ function StudentScanContent() {
                     <Clock className="w-3.5 h-3.5 text-[#A0A89F]" />
                     <span>
                       Timestamp:{' '}
-                      {new Date(completedRecord.markedAt || Date.now()).toLocaleTimeString('en-IN', {
-                        timeZone: 'Asia/Kolkata',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}{' '}
+                      {completedRecord.markedAt
+                        ? new Date(completedRecord.markedAt).toLocaleTimeString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })
+                        : '-'}{' '}
                       IST
                     </span>
                   </div>

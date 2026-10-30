@@ -44,6 +44,7 @@ export default function FacultySessionViewPage({
   const [closingSession, setClosingSession] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [shortCode, setShortCode] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState(false);
   const [activeTab, setActiveTab] = useState<'attended' | 'absent'>('attended');
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
@@ -141,12 +142,15 @@ export default function FacultySessionViewPage({
       const res = await fetch(`/api/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'refresh-qr', expiryMinutes: 2 }),
+        body: JSON.stringify({ action: 'refresh-qr', expiryMinutes: 10 }),
       });
       const json = await res.json();
       if (json.success && json.qr) {
         setQrDataUrl(json.qr.dataUrl);
         setQrToken(json.qr.token);
+        if (json.qr.shortCode) {
+          setShortCode(json.qr.shortCode);
+        }
         const diff = Math.max(
           0,
           Math.floor((new Date(json.qr.expiresAt).getTime() - Date.now()) / 1000)
@@ -180,6 +184,7 @@ export default function FacultySessionViewPage({
       if (json.success) {
         setQrDataUrl(null);
         setQrToken(null);
+        setShortCode(null);
         setSecondsRemaining(null);
         fetchSessionData();
       }
@@ -190,9 +195,10 @@ export default function FacultySessionViewPage({
     }
   };
 
-  const copyTokenToClipboard = () => {
-    if (!qrToken) return;
-    navigator.clipboard.writeText(qrToken);
+  const copyTokenToClipboard = (textToCopy?: string) => {
+    const text = textToCopy || shortCode || qrToken;
+    if (!text) return;
+    navigator.clipboard.writeText(text);
     setCopiedToken(true);
     setTimeout(() => setCopiedToken(false), 2000);
   };
@@ -501,21 +507,34 @@ export default function FacultySessionViewPage({
                       </span>
                     </div>
 
-                    {/* Token String Fallback */}
-                    {qrToken && (
-                      <div className="mt-3 p-2.5 rounded-xl bg-[#101211]/70 border border-[#303831] flex items-center justify-between text-xs font-mono">
-                        <span className="text-[#A0A89F] truncate max-w-[200px]">{qrToken}</span>
-                        <button
-                          onClick={copyTokenToClipboard}
-                          className="p-1 text-[#C6F36B] hover:text-[#b5e855] transition-colors"
-                          title="Copy Token"
-                        >
-                          {copiedToken ? (
-                            <Check className="w-4 h-4 text-[#72D6A0]" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
+                    {/* Classroom Verification Code / Token Banner */}
+                    {(shortCode || qrToken) && (
+                      <div className="mt-3 p-3 rounded-xl bg-[#202622] border border-[#303831] space-y-2 text-center">
+                        <span className="text-[10px] font-bold text-[#A0A89F] uppercase tracking-wider block">
+                          Classroom Verification Code
+                        </span>
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="font-mono text-xl font-black text-[#C6F36B] tracking-widest px-3 py-1 bg-[#101211] rounded-lg border border-[#303831]">
+                            {shortCode || qrToken}
+                          </span>
+                          <button
+                            onClick={() => copyTokenToClipboard(shortCode || qrToken || '')}
+                            className="p-1.5 rounded-lg bg-[#101211] text-[#C6F36B] hover:text-[#b5e855] border border-[#303831] transition-colors"
+                            title="Copy Verification Code"
+                          >
+                            {copiedToken ? (
+                              <Check className="w-4 h-4 text-[#72D6A0]" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-[#A0A89F]">
+                          Students: Enter code at{' '}
+                          <span className="font-mono text-[#F1F3ED]">
+                            {data?.lanUrl ? `${data.lanUrl}/student/scan` : '/student/scan'}
+                          </span>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -783,17 +802,26 @@ export default function FacultySessionViewPage({
                   </div>
                 </div>
 
-                {qrToken && (
-                  <p className="text-xs font-mono text-[#A0A89F]/70 mt-3">
-                    Token: <span className="text-[#A0A89F]">{qrToken}</span>
-                  </p>
+                {(shortCode || qrToken) && (
+                  <div className="mt-4 p-3.5 rounded-xl bg-[#202622]/90 border border-[#303831] max-w-sm mx-auto text-center">
+                    <span className="text-[11px] font-bold text-[#A0A89F] uppercase tracking-wider block mb-1">
+                      Student Verification Code
+                    </span>
+                    <span className="font-mono text-2xl font-black text-[#C6F36B] tracking-widest px-4 py-1.5 bg-[#101211] rounded-lg border border-[#C6F36B]/30 inline-block shadow-md">
+                      {shortCode || qrToken}
+                    </span>
+                  </div>
                 )}
               </div>
 
               {/* Projector Footer Notice */}
               <div className="w-full max-w-4xl text-center border-t border-[#303831] pt-4">
                 <p className="text-xs text-[#A0A89F]">
-                  Students: Open <span className="text-[#C6F36B] font-mono font-semibold">/student/scan</span> on your mobile device to scan this screen.
+                  Students: Open{' '}
+                  <span className="text-[#C6F36B] font-mono font-bold">
+                    {data?.lanUrl ? `${data.lanUrl}/student/scan` : '/student/scan'}
+                  </span>{' '}
+                  on your mobile device to scan this screen or enter the code.
                 </p>
               </div>
             </div>

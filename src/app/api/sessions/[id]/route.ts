@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser, requireFaculty } from '@/lib/auth';
-import { generateSecureToken, hashToken, generateQrDataUrl } from '@/lib/qr';
+import { generateSecureToken, generateShortCode, hashToken, generateQrDataUrl } from '@/lib/qr';
+import { getLanIp, getLanUrl } from '@/lib/lan';
 import { Role, SessionStatus, AttendanceStatus } from '@prisma/client';
 
 export async function GET(
@@ -80,6 +81,8 @@ export async function GET(
       absentStudents,
       isOwner: isOwnerFaculty || isAdmin,
       qrInfo,
+      lanIp: getLanIp(),
+      lanUrl: getLanUrl(),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -119,7 +122,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { action, expiryMinutes = 2 } = body;
+    const { action, expiryMinutes = 10 } = body;
 
     if (action === 'refresh-qr') {
       if (session.status !== SessionStatus.OPEN) {
@@ -130,7 +133,8 @@ export async function PATCH(
       }
 
       const newToken = generateSecureToken();
-      const tokenHash = hashToken(newToken);
+      const shortCode = generateShortCode();
+      const tokenHash = `${hashToken(newToken)}:${hashToken(shortCode)}`;
       const newExpiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
       await prisma.attendanceSession.update({
@@ -145,6 +149,7 @@ export async function PATCH(
         type: 'AMS_ATTENDANCE',
         sessionId: session.id,
         token: newToken,
+        shortCode,
       });
 
       const qrDataUrl = await generateQrDataUrl(qrPayload);
@@ -154,6 +159,7 @@ export async function PATCH(
         message: 'QR code refreshed successfully',
         qr: {
           token: newToken,
+          shortCode,
           expiresAt: newExpiresAt,
           dataUrl: qrDataUrl,
           payload: qrPayload,

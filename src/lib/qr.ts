@@ -33,6 +33,20 @@ export function generateSecureToken(): string {
 }
 
 /**
+ * Generate an unambiguous, human-friendly 6-character verification code
+ * for classroom manual entry without confusing characters (0/O, 1/I).
+ */
+export function generateShortCode(): string {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let code = '';
+  const bytes = crypto.randomBytes(6);
+  for (let i = 0; i < 6; i++) {
+    code += chars[bytes[i] % chars.length];
+  }
+  return code;
+}
+
+/**
  * Hash token using SHA-256 for secure database storage.
  */
 export function hashToken(token: string): string {
@@ -136,8 +150,19 @@ export async function processAttendanceCheckIn(
       };
     }
 
-    const hashedInput = hashToken(rawToken);
-    if (hashedInput !== session.qrTokenHash) {
+    const trimmedInput = rawToken.trim();
+    const hashedDirect = hashToken(trimmedInput);
+    const hashedUpper = hashToken(trimmedInput.toUpperCase());
+    const sanitized = trimmedInput.replace(/[\s\-_]/g, '').toUpperCase();
+    const hashedSanitized = hashToken(sanitized);
+
+    // session.qrTokenHash can store "fullHash:shortHash" or a single "hash"
+    const validHashes = session.qrTokenHash.split(':');
+    const isTokenValid = validHashes.some(
+      (h) => h === hashedDirect || h === hashedUpper || h === hashedSanitized
+    );
+
+    if (!isTokenValid) {
       return {
         success: false,
         message: 'Invalid QR token. The code you scanned is incorrect or expired.',
